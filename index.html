@@ -18,21 +18,37 @@
       <div class="modal-box">
         <span class="close" onclick="closeAuth()">✕</span>
 
-        <h2 id="authTitle">Login</h2>
+        <!-- ROLE STEP -->
 
-        <input id="usernameField" placeholder="Username" />
-        <input id="emailField" placeholder="Email" />
+        <div id="roleStep">
+          <h2>Select Role</h2>
 
-        <div class="password-box">
-          <input id="password" type="password" placeholder="Password" />
-          <span onclick="togglePassword()">👁</span>
+          <button class="auth-btn" onclick="selectRole('user')">
+            Continue as User
+          </button>
+
+          <button class="auth-btn" onclick="selectRole('receptionist')">
+            Continue as Receptionist
+          </button>
         </div>
 
-        <button class="auth-btn" onclick="submitAuth()">Continue</button>
+        <!-- AUTH STEP -->
 
-        <p id="switchText">
-          New user? <span onclick="switchMode()">Sign up</span>
-        </p>
+        <div id="authStep" style="display: none">
+          <h2 id="authTitle">Login</h2>
+
+          <input id="usernameField" placeholder="Username" />
+          <input id="emailField" placeholder="Email" />
+
+          <div class="password-box">
+            <input id="password" type="password" placeholder="Password" />
+            <span onclick="togglePassword()">👁</span>
+          </div>
+
+          <button class="auth-btn" onclick="submitAuth()">Continue</button>
+
+          <p id="switchText"></p>
+        </div>
       </div>
     </div>
 

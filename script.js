@@ -1,9 +1,26 @@
+window.onload = function () {
+  window.scrollTo(0, 0);
+};
+
+let role = "";
 let mode = "login";
 
 function openAuth(type = "login") {
   mode = type;
-  updateMode();
+
+  document.getElementById("roleStep").style.display = "block";
+  document.getElementById("authStep").style.display = "none";
+
   document.getElementById("authModal").style.display = "flex";
+}
+
+function selectRole(selectedRole) {
+  role = selectedRole;
+
+  document.getElementById("roleStep").style.display = "none";
+  document.getElementById("authStep").style.display = "block";
+
+  updateMode();
 }
 
 function closeAuth() {
@@ -37,7 +54,7 @@ function togglePassword() {
 }
 
 function submitAuth() {
-  alert(mode === "login" ? "Logging in..." : "Signing up...");
+  alert(`${mode === "login" ? "Logging in" : "Signing up"} as ${role}`);
 }
 
 updateMode();
