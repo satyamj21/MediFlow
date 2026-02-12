@@ -91,8 +91,10 @@ http://localhost:3000
 
 🤝 Contributors
 
-- Your Name
-- Partner Name
+- Satyam Jha
+- Atharva Ketkar
+- Vinayak Kanase
+- Kashif Khan
 
 ---
 
