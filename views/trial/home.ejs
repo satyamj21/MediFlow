@@ -1,80 +1,6 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>MediFlow</title>
+<%layout("/layout/boilerplate")-%>
 
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-    />
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <!-- AUTH MODAL -->
-
-    <div id="authModal" class="modal">
-      <div class="modal-box">
-        <span class="close" onclick="closeAuth()">✕</span>
-
-        <!-- ROLE STEP -->
-
-        <div id="roleStep">
-          <h2>Select Role</h2>
-
-          <button class="auth-btn" onclick="selectRole('user')">
-            Continue as User
-          </button>
-
-          <button class="auth-btn" onclick="selectRole('receptionist')">
-            Continue as Receptionist
-          </button>
-        </div>
-
-        <!-- AUTH STEP -->
-
-        <div id="authStep" style="display: none">
-          <h2 id="authTitle">Login</h2>
-
-          <input id="usernameField" placeholder="Username" />
-          <input id="emailField" placeholder="Email" />
-
-          <div class="password-box">
-            <input id="password" type="password" placeholder="Password" />
-            <span onclick="togglePassword()">👁</span>
-          </div>
-
-          <button class="auth-btn" onclick="submitAuth()">Continue</button>
-
-          <p id="switchText"></p>
-        </div>
-      </div>
-    </div>
-
-    <!-- NAV -->
-
-    <nav class="nav">
-      <div class="nav-left">
-        <div class="logo">
-          <i class="fa-solid fa-heart-pulse"></i>
-          MediFlow
-        </div>
-
-        <div class="links">
-          <a href="#home">Home</a>
-          <a href="#how">How It Works</a>
-          <a href="#features">Features</a>
-        </div>
-      </div>
-
-      <div class="auth">
-        <button class="ghost" onclick="openAuth('signup')">Sign Up</button>
-        <button class="primary" onclick="openAuth('login')">Login</button>
-      </div>
-    </nav>
-
-    <!-- HOME -->
+<!-- HOME -->
 
     <section id="home">
       <div class="home-inner">
@@ -87,9 +13,11 @@
           </p>
 
           <div class="home-actions">
-            <button class="primary" onclick="openAuth('login')">
+            <form method="get" action="/login">
+              <button class="primary" >
               Login / Book
             </button>
+            </form>
 
             <button class="ghost" onclick="location.href = '#how'">
               How It Works
@@ -105,7 +33,7 @@
       </div>
     </section>
 
-    <!-- HOW -->
+     <!-- HOW -->
 
     <section id="how" class="how">
       <h2>How MediFlow Works</h2>
@@ -141,7 +69,7 @@
       </div>
     </section>
 
-    <!-- FEATURES -->
+      <!-- FEATURES -->
 
     <section id="features" class="features">
       <h2>Platform Features</h2>
@@ -177,6 +105,3 @@
       </div>
     </section>
 
-    <script src="script.js"></script>
-  </body>
-</html>
