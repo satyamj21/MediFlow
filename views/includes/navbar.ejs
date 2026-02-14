@@ -16,11 +16,19 @@
       </div>
 
       <div class="auth">
-        <form method="get" action="/signup">
+        <%if(!curruser){%>
+          <form method="get" action="/signup">
           <button class="ghost">Sign Up</button>
-        </form>
-        <form method="get" action="/login">
-          <button class="primary" >Login</button>
-        </form>
+          </form>
+          <form method="get" action="/login">
+            <button class="primary" >Login</button>
+          </form>
+
+        <%}else{%>
+          <form method="get" action="/logout">
+            <button class="primary" >Logout</button>
+          </form>
+
+        <%}%>
       </div>
     </nav>

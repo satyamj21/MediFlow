@@ -43,6 +43,14 @@ passport.use(User.createStrategy());
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
+app.use((req,res,next)=>{
+    res.locals.curruser=req.user;
+
+    next();
+})
+
+
+
 app.get("/root",(req,res)=>{
     res.send("Hi I am root");
 
@@ -78,6 +86,15 @@ app.post("/login",passport.authenticate("local",{failureRedirect:"/login"}),asyn
     }
       
 });
+app.get("/logout",(req,res)=>{
+    req.logOut((err)=>{
+        if(err){
+            next(err);
+        }else{
+            res.redirect("/login");
+        }
+    })
+})
 
 app.get("/home",(req,res)=>{
     if(!req.isAuthenticated()){
