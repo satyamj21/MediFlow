@@ -1,0 +1,68 @@
+<%layout("/layout/boilerplate")-%>
+<div class="auth-overlay">
+  <div class="auth-card">
+
+    <a href="/home" class="close-btn">✕</a>
+
+    <h2>Sign Up</h2>
+
+    <form action="/signup" method="POST">
+
+      <!-- ROLE SELECTION -->
+      <div class="role-select">
+        <button type="button" class="role-btn active" onclick="selectRole(this,'user')">
+          User
+        </button>
+        <button type="button" class="role-btn" onclick="selectRole(this,'receptionist')">
+          Receptionist
+        </button>
+      </div>
+
+      <input type="hidden" name="role" id="roleField" value="user" />
+
+      <!-- USERNAME -->
+      <div class="input-group">
+        <input 
+          type="text" 
+          name="username" 
+          placeholder="Username" 
+          required 
+        />
+      </div>
+
+      <!-- EMAIL -->
+      <div class="input-group">
+        <input 
+          type="email" 
+          name="email" 
+          placeholder="Email" 
+          required 
+        />
+      </div>
+
+      <!-- PASSWORD -->
+      <div class="input-group password-group">
+        <input 
+          type="password" 
+          name="password" 
+          id="passwordField"
+          placeholder="Password" 
+          required 
+        />
+        <span class="eye" onclick="togglePassword()">
+          <i class="fa-regular fa-eye"></i>
+        </span>
+      </div>
+
+      <button class="auth-btn" type="submit">
+        Create Account
+      </button>
+
+    </form>
+
+    <p class="switch-text">
+      Already a user? <a href="/login">Login</a>
+    </p>
+
+  </div>
+</div>
