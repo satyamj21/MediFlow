@@ -49,11 +49,11 @@ passport.use(User.createStrategy());
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
-app.use((req,res,next)=>{
-    res.locals.curruser=req.user;
+app.use((req, res, next) => {
+  res.locals.curruser = req.user;
 
-    next();
-})
+  next();
+});
 
 app.get("/root", (req, res) => {
   res.send("Hi I am root");
@@ -96,18 +96,49 @@ app.post(
     const actualrole = req.user.role;
 
     if (selectrole == actualrole) {
-      res.redirect("/home");
+      if (actualrole === "user") {
+        return res.redirect("/user");
+      }
+
+      if (actualrole === "receptionist") {
+        return res.redirect("/receptionist");
+      }
+
+      return res.redirect("/home");
     } else {
       req.logOut(() => {
         req.flash("error", "Role does not match");
         res.redirect("/login");
       });
     }
-      
+  },
+);
+
+app.get("/logout", (req, res) => {
+  req.logout(function (err) {
+    if (err) {
+      return res.redirect("/home");
+    }
+    res.redirect("/home");
+  });
+});
+
+function isLoggedIn(req, res, next) {
+  if (!req.isAuthenticated()) {
+    return res.redirect("/login");
+  }
+  next();
+}
+
+app.get("/user", isLoggedIn, (req, res) => {
+  res.render("trial/user");
+});
+
+app.get("/receptionist", isLoggedIn, (req, res) => {
+  res.render("trial/receptionist");
 });
 
 app.get("/home", (req, res) => {
-
   res.render("trial/home");
 });
 

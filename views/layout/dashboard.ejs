@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard</title>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Dashboard CSS -->
+  <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+
+  <div class="dashboard">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <h2>MediFlow</h2>
+
+      <% if (curruser.role === "user") { %>
+        <a href="#">Dashboard</a>
+        <a href="#">Book Appointment</a>
+        <a href="#">My Appointments</a>
+      <% } %>
+
+      <% if (curruser.role === "receptionist") { %>
+        <a href="#">Dashboard</a>
+        <a href="#">Manage Queue</a>
+        <a href="#">Add Patient</a>
+      <% } %>
+
+      <div class="logout">
+        <a href="/logout">Logout</a>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content">
+      <%- body %>
+    </div>
+
+  </div>
+
+</body>
+</html>

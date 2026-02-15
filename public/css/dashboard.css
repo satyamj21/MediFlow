@@ -1,0 +1,88 @@
+body {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+}
+
+.dashboard {
+  display: flex;
+  height: 100vh;
+}
+
+/* SIDEBAR */
+
+.sidebar {
+  width: 240px;
+  background: linear-gradient(180deg, #1f2937, #111827);
+  color: white;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar h2 {
+  margin-bottom: 30px;
+  font-size: 20px;
+}
+
+.sidebar a {
+  text-decoration: none;
+  color: #d1d5db;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  transition: 0.2s;
+}
+
+.sidebar a:hover {
+  background: #374151;
+  color: white;
+}
+
+.logout {
+  margin-top: auto;
+}
+
+.logout a {
+  background: #dc2626;
+  color: white;
+  text-align: center;
+}
+
+/* CONTENT AREA */
+
+.content {
+  flex: 1;
+  padding: 40px;
+  background: #f9fafb;
+  overflow-y: auto;
+}
+
+/* DASHBOARD CARDS */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.card {
+  background: white;
+  padding: 25px;
+  border-radius: 14px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
+  transition: 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+.card h3 {
+  margin-bottom: 8px;
+}
+
+.card p {
+  color: #6b7280;
+}
+    
