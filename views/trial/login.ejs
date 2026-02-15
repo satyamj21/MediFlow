@@ -7,6 +7,12 @@
 
     <h2>Login</h2>
 
+     <% if (success && success.length > 0) { %>
+      <div class="success-msg">
+    <%= success[0] %>
+        </div>
+    <% } %>
+
     <% if (error && error.length > 0) { %>
       <div class="error-msg">
     <%= error[0] %>

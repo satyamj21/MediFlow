@@ -117,6 +117,7 @@ app.post(
 app.get("/logout", (req, res) => {
   req.logout(function (err) {
     if (err) {
+        req.flash("success","You have Looged out ")
       return res.redirect("/home");
     }
     res.redirect("/home");
