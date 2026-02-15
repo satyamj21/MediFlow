@@ -49,6 +49,12 @@ passport.use(User.createStrategy());
 passport.serializeUser(User.serializeUser());
 passport.deserializeUser(User.deserializeUser());
 
+app.use((req,res,next)=>{
+    res.locals.curruser=req.user;
+
+    next();
+})
+
 app.get("/root", (req, res) => {
   res.send("Hi I am root");
 });
@@ -105,8 +111,8 @@ app.post(
         res.redirect("/login");
       });
     }
-  },
-);
+      
+});
 
 app.get("/home", (req, res) => {
   if (!req.isAuthenticated()) {
