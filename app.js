@@ -63,14 +63,6 @@ app.get("/signup", (req, res) => {
   res.render("trial/signup");
 });
 
-// app.post("/signup", async (req, res) => {
-//   let { username, email, password, role } = req.body;
-//   const newuser = new User({ email, username, role });
-//   const register = await User.register(newuser, password);
-//   console.log(register);
-//   res.redirect("/home");
-// });
-
 app.post("/signup", async (req, res) => {
   try {
     let { username, email, password, role } = req.body;
@@ -115,9 +107,6 @@ app.post(
 });
 
 app.get("/home", (req, res) => {
-  if (!req.isAuthenticated()) {
-    return res.redirect("/login");
-  }
 
   res.render("trial/home");
 });
