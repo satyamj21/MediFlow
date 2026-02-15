@@ -12,6 +12,10 @@ html {
 body {
   background: linear-gradient(135deg, #f5f9ff, #e6f0ff);
 }
+.logo-icon {
+  fill: white;
+}
+
 
 /* NAV */
 
