@@ -1,26 +1,63 @@
+<!-- NAV -->
 
- <!-- NAV -->
-
-    <nav class="nav">
-      <div class="nav-left">
-        <div class="logo">
-          <i class="fa-solid fa-heart-pulse"></i>
-          MediFlow
+<nav class="nav">
+  <div class="nav-left">
+    <!-- <div class="logo">
+      <i class="fa-solid fa-heart-pulse"></i>
+      MediFlow
+    </div> -->
+    <div class="logo">
+      <div class="ecg-box">
+        <div class="ecg-track">
+          <svg viewBox="0 0 200 40">
+            <path
+              d="M0 20 
+                 L20 20 
+                 L30 8 
+                 L40 32 
+                 L50 20 
+                 L70 20 
+                 L80 6 
+                 L90 34 
+                 L100 20 
+                 L200 20"
+            />
+          </svg>
+          <svg viewBox="0 0 200 40">
+            <path
+              d="M0 20 
+                 L20 20 
+                 L30 12 
+                 L40 28 
+                 L50 20 
+                 L70 20 
+                 L80 5 
+                 L90 35 
+                 L100 20 
+                 L200 20"
+            />
+          </svg>
         </div>
 
-        <div class="links">
-          <a href="/home">Home</a>
-          <a href="#how">How It Works</a>
-          <a href="#features">Features</a>
-        </div>
+        <i class="fa-solid fa-heart heart-icon"></i>
       </div>
 
-      <div class="auth">
-        <form method="get" action="/signup">
-          <button class="ghost">Sign Up</button>
-        </form>
-        <form method="get" action="/login">
-          <button class="primary" >Login</button>
-        </form>
-      </div>
-    </nav>
+      <span class="brand">MediFlow</span>
+    </div>
+
+    <div class="links">
+      <a href="/home">Home</a>
+      <a href="#how">How It Works</a>
+      <a href="#features">Features</a>
+    </div>
+  </div>
+
+  <div class="auth">
+    <form method="get" action="/signup">
+      <button class="ghost">Sign Up</button>
+    </form>
+    <form method="get" action="/login">
+      <button class="primary">Login</button>
+    </form>
+  </div>
+</nav>

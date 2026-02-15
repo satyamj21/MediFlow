@@ -1,10 +1,17 @@
-<%layout("/layout/boilerplate")-%>
+<% layout("/layout/boilerplate") -%>
+
+
 <div class="auth-overlay">
   <div class="auth-card">
 
     <a href="/home" class="close-btn">✕</a>
 
     <h2>Sign Up</h2>
+    <% if (error.length > 0) { %>
+    <div class="signup-error">
+      <%= error[0] %>
+    </div>
+    <% } %>
 
     <form action="/signup" method="POST">
 
@@ -22,33 +29,17 @@
 
       <!-- USERNAME -->
       <div class="input-group">
-        <input 
-          type="text" 
-          name="username" 
-          placeholder="Username" 
-          required 
-        />
+        <input type="text" name="username" placeholder="Username" required />
       </div>
 
       <!-- EMAIL -->
       <div class="input-group">
-        <input 
-          type="email" 
-          name="email" 
-          placeholder="Email" 
-          required 
-        />
+        <input type="email" name="email" placeholder="Email" required />
       </div>
 
       <!-- PASSWORD -->
       <div class="input-group password-group">
-        <input 
-          type="password" 
-          name="password" 
-          id="passwordField"
-          placeholder="Password" 
-          required 
-        />
+        <input type="password" name="password" id="passwordField" placeholder="Password" required />
         <span class="eye" onclick="togglePassword()">
           <i class="fa-regular fa-eye"></i>
         </span>

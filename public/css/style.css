@@ -247,22 +247,24 @@ section {
 /* ===== AUTH OVERLAY ===== */
 
 .auth-overlay {
-  min-height: 100vh;
-  background: rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(6px);
+  min-height: calc(100vh - 79px);
+  background: rgba(0, 0, 0, 0.45);  /* thoda dark karo */
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
+
 /* ===== AUTH CARD ===== */
 
 .auth-card {
+  margin: auto;
   background: #fff;
   width: 380px;
   padding: 35px 30px;
   border-radius: 18px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
   position: relative;
   animation: pop 0.25s ease;
 }
@@ -398,3 +400,92 @@ section {
 .role-btn:not(.active):hover {
   background: #e3eaff;
 }
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Container */
+.ecg-box {
+  position: relative;
+  width: 95px;
+  height: 40px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+/* Smooth Left → Right Scroll */
+.ecg-track {
+  display: flex;
+  width: 400px;
+  animation: scroll 3s linear infinite;
+}
+
+@keyframes scroll {
+  from {
+    transform: translateX(-200px);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.ecg-track svg {
+  width: 200px;
+  height: 40px;
+}
+
+.ecg-track path {
+  fill: none;
+  stroke: #e63946;
+  stroke-width: 2;
+}
+
+/* Heart */
+.heart-icon {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 26px;
+  color: #e63946;
+  z-index: 2;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+/* Simple Pulse */
+@keyframes pulse {
+  0% {
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    transform: translateX(-50%) scale(1.15);
+  }
+  100% {
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+.error-msg {
+  background-color: #ffe5e5;
+  color: #d8000c;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.signup-error {
+  background: #f8d7da;
+  color: #d93025;
+  padding: 12px 15px;
+  border-radius: 10px;
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 15px;
+  border: 1px solid #f5c2c7;
+  animation: fadeSlide 0.3s ease-in-out;
+}
+
