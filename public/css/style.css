@@ -154,7 +154,10 @@ button {
 
 .how h2 {
   font-size: 34px;
-  margin-bottom: 40px;
+  margin-bottom: 10px;
+}
+.how p {
+  margin-bottom: 30px;
 }
 
 .how-grid {
@@ -194,7 +197,11 @@ button {
 }
 
 .features h2 {
-  margin-bottom: 40px;
+  font-size: 34px;
+  margin-bottom: 10px;
+}
+.features p {
+  margin-bottom: 30px;
 }
 
 .features-grid {
@@ -240,21 +247,22 @@ button {
 }
 
 section {
-  min-height: calc(100vh - 79px);
-  scroll-margin-top: 79px;
+  min-height: calc(100vh - 76px);
+  scroll-margin-top: 76px;
 }
 
 /* ===== AUTH OVERLAY ===== */
-
 .auth-overlay {
-  min-height: calc(100vh - 79px);
-  background: rgba(0, 0, 0, 0.45);  /* thoda dark karo */
-  backdrop-filter: blur(4px);
+  min-height: calc(100vh - 76px);
+  background: linear-gradient(
+    rgba(47, 128, 237, 0.25),
+    rgba(86, 204, 242, 0.25)
+  );
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
 }
-
 
 /* ===== AUTH CARD ===== */
 
@@ -488,4 +496,3 @@ section {
   border: 1px solid #f5c2c7;
   animation: fadeSlide 0.3s ease-in-out;
 }
-
