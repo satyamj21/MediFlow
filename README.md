@@ -91,10 +91,10 @@ http://localhost:3000
 
 🤝 Contributors
 
+- Kashif Khan
 - Satyam Jha
 - Atharva Ketkar
 - Vinayak Kanase
-- Kashif Khan
 
 ---
 
