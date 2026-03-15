@@ -1,6 +1,11 @@
+/* =========================================================
+   GLOBAL STYLES
+========================================================= */
+
 body {
   margin: 0;
   font-family: "Poppins", sans-serif;
+  background: #f3f4f6;
 }
 
 .dashboard {
@@ -8,47 +13,89 @@ body {
   height: 100vh;
 }
 
-/* SIDEBAR */
+
+/* =========================================================
+   SIDEBAR
+========================================================= */
 
 .sidebar {
-  width: 240px;
-  background: linear-gradient(180deg, #1f2937, #111827);
+  width: 250px;
+  background: linear-gradient(180deg, #1e6fd8 0%, #1565c0 50%, #0d47a1 100%);
   color: white;
-  padding: 30px 20px;
+  padding: 30px 22px;
   display: flex;
   flex-direction: column;
+  box-shadow: 4px 0 18px rgba(0,0,0,0.08);
 }
 
-.sidebar h2 {
-  margin-bottom: 30px;
-  font-size: 20px;
+
+/* =========================================================
+   SIDEBAR LOGO
+========================================================= */
+
+.logo{
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:40px;
 }
+
+.brand{
+  font-size:24px;
+  font-weight:700;
+  color:white;
+  letter-spacing:0.5px;
+}
+
+
+/* =========================================================
+   SIDEBAR LINKS
+========================================================= */
 
 .sidebar a {
   text-decoration: none;
-  color: #d1d5db;
-  padding: 10px 14px;
+  color: white;
+  padding: 12px 16px;
   border-radius: 8px;
-  margin-bottom: 10px;
-  transition: 0.2s;
+  margin-bottom: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: block;
 }
 
 .sidebar a:hover {
-  background: #374151;
-  color: white;
+  background: rgba(255,255,255,0.12);
+  transform: translateX(4px);
 }
+
+.sidebar a.active {
+  background: rgba(255,255,255,0.18);
+}
+
+
+/* =========================================================
+   LOGOUT BUTTON
+========================================================= */
 
 .logout {
   margin-top: auto;
 }
 
 .logout a {
-  background: #dc2626;
-  color: white;
+  background: #ef4444;
   text-align: center;
+  padding: 12px;
+  border-radius: 10px;
 }
 
-/* CONTENT AREA */
+.logout a:hover {
+  background: #dc2626;
+}
+
+
+/* =========================================================
+   CONTENT AREA
+========================================================= */
 
 .content {
   flex: 1;
@@ -57,32 +104,116 @@ body {
   overflow-y: auto;
 }
 
-/* DASHBOARD CARDS */
+
+/* =========================================================
+   HEADER TEXT
+========================================================= */
+
+.content h1 {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.content p {
+  color: #6b7280;
+  font-size: 15px;
+}
+
+
+/* =========================================================
+   HERO SECTION
+========================================================= */
+
+.hero{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:40px;
+  background:white;
+  padding:30px;
+  border-radius:14px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.05);
+}
+
+.hero-text h1{
+  margin:0;
+  font-size:28px;
+}
+
+.hero-text p{
+  margin-top:8px;
+  color:#6b7280;
+}
+
+.hero-img{
+  width:200px;
+}
+
+
+/* =========================================================
+   DASHBOARD CARDS
+========================================================= */
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
-  margin-top: 30px;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 22px;
+  margin-top: 35px;
 }
 
-.card {
-  background: white;
-  padding: 25px;
-  border-radius: 14px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.05);
-  transition: 0.2s;
+
+/* =========================================================
+   CARD STYLING
+========================================================= */
+
+.card{
+  background:white;
+  padding:25px;
+  border-radius:14px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.06);
+  transition:0.25s;
+  cursor:pointer;
 }
 
-.card:hover {
-  transform: translateY(-5px);
+.card:hover{
+  transform:translateY(-6px);
+  box-shadow:0 12px 30px rgba(0,0,0,0.08);
 }
 
-.card h3 {
-  margin-bottom: 8px;
+.card h3{
+  margin-bottom:10px;
+  font-size:18px;
+  font-weight:600;
 }
 
-.card p {
-  color: #6b7280;
+.card p{
+  color:#6b7280;
+  font-size:14px;
+  line-height:1.5;
 }
-    
+
+
+/* =========================================================
+   CARD LINK FIX
+========================================================= */
+
+.card-link{
+  text-decoration:none;
+  color:inherit;
+}
+
+.card-link:visited{
+  color:inherit;
+}
+
+
+/* =========================================================
+   CARD ICON
+========================================================= */
+
+.card-icon{
+  width:40px;
+  margin-bottom:10px;
+}
+
