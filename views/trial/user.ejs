@@ -1,21 +1,113 @@
-<% layout("/layout/dashboard") -%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>MediFlow – Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/mediflow.css">
+</head>
+<body>
 
-<h1>Welcome, <%= curruser.username %> 👋</h1>
-<p>Here’s your activity overview.</p>
-
-<div class="cards">
-  <div class="card">
-    <h3>Book Appointment</h3>
-    <p>Schedule your hospital visit.</p>
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-wrap"><%- icon('hospital') %></div>
+    <span class="brand-name">MediFlow</span>
   </div>
 
-  <div class="card">
-    <h3>My Appointments</h3>
-    <p>Track your booked visits.</p>
+  <div class="sidebar-section-label">Navigation</div>
+  <nav>
+    <a href="/user" class="active">
+      <span class="nav-icon"><%- icon('dashboard') %></span> Dashboard
+    </a>
+    <a href="/book">
+      <span class="nav-icon"><%- icon('calendar') %></span> Book Appointment
+    </a>
+    <a href="/appointments">
+      <span class="nav-icon"><%- icon('appointments') %></span> My Appointments
+    </a>
+    <a class="nav-disabled">
+      <span class="nav-icon"><%- icon('queue') %></span> Live Queue
+    </a>
+  </nav>
+
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-divider"></div>
+
+  <% if (typeof curruser !== 'undefined' && curruser) { %>
+  <div class="sidebar-user">
+    <div class="avatar"><%= curruser.username[0].toUpperCase() %></div>
+    <div>
+      <div class="user-name"><%= curruser.username %></div>
+      <div class="user-role"><%= curruser.role %></div>
+    </div>
+  </div>
+  <% } %>
+  <form action="/logout" method="GET">
+    <button class="logout-btn"><%- icon('logout') %> Logout</button>
+  </form>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+    <div class="flash flash-success"><%- icon('success') %> <%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+    <div class="flash flash-error"><%- icon('warning') %> <%= error %></div>
+  <% } %>
+
+  <div class="page-header" style="display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <h1>Welcome back<% if(typeof curruser !== 'undefined' && curruser){ %>, <%= curruser.username %><% } %></h1>
+      <p>Manage your hospital visits and appointments from here.</p>
+    </div>
+    <a href="/book" class="btn btn-primary btn-lg"><%- icon('plus') %> Book Appointment</a>
   </div>
 
-  <div class="card">
-    <h3>Live Queue</h3>
-    <p>Check current waiting status.</p>
+  <!-- Quick action cards -->
+  <div class="actions-grid">
+    <a href="/book" class="action-card">
+      <div class="ac-icon blue"><%- icon('calendar') %></div>
+      <h3>Book Appointment</h3>
+      <p>Schedule a visit with one of our available specialist doctors.</p>
+    </a>
+    <a href="/appointments" class="action-card">
+      <div class="ac-icon yellow"><%- icon('appointments') %></div>
+      <h3>My Appointments</h3>
+      <p>View, reschedule or cancel your upcoming visits.</p>
+    </a>
+    <div class="action-card disabled">
+      <div class="ac-icon gray"><%- icon('queue') %></div>
+      <h3>Live Queue</h3>
+      <p>Check your current waiting number and queue status.</p>
+    </div>
   </div>
-</div>
+
+  <!-- Info bar -->
+  <div style="margin-top:20px; background:linear-gradient(135deg,#0f3460,#1a56db); border-radius:var(--radius); padding:18px 24px; display:flex; align-items:center; justify-content:space-between; color:white;">
+    <div>
+      <div style="font-size:10px; opacity:0.6; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px;">Today</div>
+      <div style="font-size:15px; font-weight:700;" id="today-date"></div>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-size:10px; opacity:0.6; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px;">Hospital Hours</div>
+      <div style="font-size:13px; font-weight:600;">Mon – Sat &nbsp;&middot;&nbsp; 9:00 AM – 6:00 PM</div>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:10px; opacity:0.6; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px;">Emergency</div>
+      <div style="font-size:13px; font-weight:600; display:flex; align-items:center; gap:6px; justify-content:flex-end;">
+        <%- icon('phone') %> 1800-MED-FLOW
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+</script>
+</body>
+</html>

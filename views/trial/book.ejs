@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>MediFlow – Book Appointment</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/mediflow.css">
+  <style>
+    .form-card { max-width: 580px; }
+
+    /* Doctor picker */
+    .doctor-list {
+      display: grid;
+      gap: 8px;
+      max-height: 272px;
+      overflow-y: auto;
+      padding: 2px;
+      margin-top: 5px;
+      border-radius: 9px;
+      border: 1.5px solid transparent;
+      transition: border-color 0.15s;
+    }
+    .doctor-list.invalid { border-color: var(--red); }
+
+    .doctor-option {
+      border: 1.5px solid var(--gray-200);
+      border-radius: 8px;
+      padding: 11px 13px;
+      cursor: pointer;
+      transition: all 0.14s;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      user-select: none;
+    }
+    .doctor-option input[type="radio"] { position:absolute; opacity:0; width:0; height:0; }
+    .doctor-option:hover   { border-color: var(--blue-light); background: var(--blue-pale); }
+    .doctor-option.selected { border-color: var(--blue-mid); background: var(--blue-pale); }
+
+    .doc-avatar {
+      width: 36px; height: 36px;
+      background: var(--blue-pale);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      border: 1.5px solid #bfdbfe;
+      color: var(--blue-mid);
+    }
+    .doc-avatar svg { width: 16px; height: 16px; }
+
+    .doc-name { font-weight: 700; font-size: 13px; color: var(--gray-900); }
+    .doc-spec  { font-size: 11.5px; color: var(--gray-500); margin-top: 2px; }
+
+    .check-circle {
+      margin-left: auto;
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid var(--gray-300);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.14s;
+      color: transparent;
+    }
+    .check-circle svg { width: 10px; height: 10px; }
+    .doctor-option.selected .check-circle { background: var(--blue-mid); border-color: var(--blue-mid); color: white; }
+
+    /* Time grid */
+    .time-grid {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 8px;
+      margin-top: 5px;
+    }
+    .time-btn {
+      border: 1.5px solid var(--gray-200);
+      border-radius: 7px;
+      padding: 9px 6px;
+      text-align: center;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.14s;
+      background: white;
+      color: var(--gray-700);
+      font-family: 'DM Sans', sans-serif;
+    }
+    .time-btn:hover    { border-color: var(--accent); color: var(--accent-dark); background: var(--yellow-pale); }
+    .time-btn.selected { border-color: var(--accent); background: var(--yellow-pale); color: var(--accent-dark); }
+
+    .submit-row { display:flex; gap:9px; margin-top:20px; }
+    .submit-row .btn { flex:1; justify-content:center; padding:11px; font-size:13.5px; }
+  </style>
+</head>
+<body>
+
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-wrap"><%- icon('hospital') %></div>
+    <span class="brand-name">MediFlow</span>
+  </div>
+  <div class="sidebar-section-label">Navigation</div>
+  <nav>
+    <a href="/user"><span class="nav-icon"><%- icon('dashboard') %></span> Dashboard</a>
+    <a href="/book" class="active"><span class="nav-icon"><%- icon('calendar') %></span> Book Appointment</a>
+    <a href="/appointments"><span class="nav-icon"><%- icon('appointments') %></span> My Appointments</a>
+    <a class="nav-disabled"><span class="nav-icon"><%- icon('queue') %></span> Live Queue</a>
+  </nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-divider"></div>
+  <% if (typeof curruser !== 'undefined' && curruser) { %>
+  <div class="sidebar-user">
+    <div class="avatar"><%= curruser.username[0].toUpperCase() %></div>
+    <div>
+      <div class="user-name"><%= curruser.username %></div>
+      <div class="user-role"><%= curruser.role %></div>
+    </div>
+  </div>
+  <% } %>
+  <form action="/logout" method="GET">
+    <button class="logout-btn"><%- icon('logout') %> Logout</button>
+  </form>
+</aside>
+
+<main class="main">
+  <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+    <div class="flash flash-success"><%- icon('success') %> <%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+    <div class="flash flash-error"><%- icon('warning') %> <%= error %></div>
+  <% } %>
+
+  <div class="page-header">
+    <h1>Book an Appointment</h1>
+    <p>Choose a doctor, date and time slot to schedule your visit.</p>
+  </div>
+
+  <div class="card form-card">
+    <div class="card-header-row">
+      <div>
+        <h2>Appointment Details</h2>
+        <p>All fields are required</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <form action="/book" method="POST" id="bookForm" novalidate>
+
+        <!-- Doctor -->
+        <div class="form-group">
+          <label class="form-label">Select Doctor</label>
+          <div class="doctor-list" id="doctorList">
+            <% doctors.forEach(doc => { %>
+            <label class="doctor-option">
+              <input type="radio" name="doctor" value="<%= doc._id %>">
+              <div class="doc-avatar"><%- icon('doctor') %></div>
+              <div>
+                <div class="doc-name"><%= doc.name %></div>
+                <div class="doc-spec"><%= doc.specialization %></div>
+              </div>
+              <div class="check-circle"><%- icon('check') %></div>
+            </label>
+            <% }) %>
+          </div>
+          <div class="field-error" id="err-doctor">Please select a doctor before continuing.</div>
+        </div>
+
+        <!-- Date -->
+        <div class="form-group">
+          <label class="form-label" for="date">Select Date</label>
+          <input class="form-control" type="date" name="date" id="date" required>
+          <div class="field-error" id="err-date">Please select a date.</div>
+        </div>
+
+        <!-- Time slot -->
+        <div class="form-group">
+          <label class="form-label">Select Time Slot</label>
+          <input type="hidden" name="timeSlot" id="timeSlotInput">
+          <div class="time-grid">
+            <% ['9:00 AM','10:00 AM','11:00 AM','12:00 PM','2:00 PM','3:00 PM'].forEach(t => { %>
+            <button type="button" class="time-btn" data-val="<%= t.split(' ')[0] %>"><%= t %></button>
+            <% }) %>
+          </div>
+          <div class="field-error" id="err-time">Please select a time slot.</div>
+        </div>
+
+        <div class="submit-row">
+          <a href="/user" class="btn btn-ghost"><%- icon('back') %> Cancel</a>
+          <button type="submit" class="btn btn-primary">Confirm Booking <%- icon('check') %></button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</main>
+
+<script>
+  // Doctor selection
+  document.querySelectorAll('.doctor-option').forEach(card => {
+    card.addEventListener('click', function() {
+      document.querySelectorAll('.doctor-option').forEach(c => c.classList.remove('selected'));
+      this.classList.add('selected');
+      this.querySelector('input[type="radio"]').checked = true;
+      document.getElementById('doctorList').classList.remove('invalid');
+      document.getElementById('err-doctor').classList.remove('show');
+    });
+  });
+
+  // Time slot selection
+  document.querySelectorAll('.time-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+      this.classList.add('selected');
+      document.getElementById('timeSlotInput').value = this.dataset.val;
+      document.getElementById('err-time').classList.remove('show');
+    });
+  });
+
+  // Min date = today
+  document.getElementById('date').min = new Date().toISOString().split('T')[0];
+
+  // Clear date error on change
+  document.getElementById('date').addEventListener('change', function() {
+    this.classList.remove('error');
+    document.getElementById('err-date').classList.remove('show');
+  });
+
+  // Submit validation
+  document.getElementById('bookForm').addEventListener('submit', function(e) {
+    let valid = true;
+
+    // 1. Doctor
+    if (!document.querySelector('input[name="doctor"]:checked')) {
+      document.getElementById('doctorList').classList.add('invalid');
+      document.getElementById('err-doctor').classList.add('show');
+      valid = false;
+    }
+
+    // 2. Date
+    if (!document.getElementById('date').value) {
+      document.getElementById('date').classList.add('error');
+      document.getElementById('err-date').classList.add('show');
+      valid = false;
+    }
+
+    // 3. Time slot
+    if (!document.getElementById('timeSlotInput').value) {
+      document.getElementById('err-time').classList.add('show');
+      valid = false;
+    }
+
+    if (!valid) {
+      e.preventDefault();
+      // Scroll to first visible error
+      const first = document.querySelector('.invalid, .form-control.error, .field-error.show');
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+</script>
+</body>
+</html>

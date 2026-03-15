@@ -1,21 +1,498 @@
-<% layout("/layout/dashboard") -%>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>MediFlow – Reception</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/mediflow.css">
+  <style>
+    /* ── Teal sidebar ── */
+    .sidebar { background: linear-gradient(175deg, #0d6e6e 0%, #0e9090 100%); }
+    .sidebar nav a.active { background: rgba(255,255,255,0.22); }
+    .stat-icon.teal { background: #e0f7f7; color: #0d6e6e; }
 
-<h1>Reception Panel 🏥</h1>
-<p>Manage today’s operations.</p>
+    /* ── Schedule modal ── */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15,52,96,0.35);
+      backdrop-filter: blur(2px);
+      z-index: 500;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-backdrop.open { display: flex; }
 
-<div class="cards">
-  <div class="card">
-    <h3>Manage Queue</h3>
-    <p>View and control patient flow.</p>
+    .modal {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: 0 8px 40px rgba(15,52,96,0.18);
+      width: 100%;
+      max-width: 460px;
+      margin: 20px;
+      animation: modalIn 0.2s ease;
+    }
+
+    @keyframes modalIn {
+      from { opacity:0; transform:translateY(-12px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+
+    .modal-header {
+      padding: 18px 22px 14px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-header h3 { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+    .modal-header .modal-sub { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+
+    .modal-close {
+      background: none; border: none; cursor: pointer;
+      color: var(--gray-400); padding: 4px;
+      border-radius: 6px; transition: all 0.14s;
+      display: flex; align-items: center;
+    }
+    .modal-close:hover { background: var(--gray-100); color: var(--gray-700); }
+    .modal-close svg { width: 16px; height: 16px; }
+
+    .modal-body { padding: 18px 22px; }
+
+    .modal-footer {
+      padding: 14px 22px 18px;
+      display: flex;
+      gap: 9px;
+    }
+    .modal-footer .btn { flex: 1; justify-content: center; padding: 10px; }
+
+    /* Time slot grid inside modal */
+    .time-grid {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 7px;
+      margin-top: 5px;
+    }
+
+    .time-btn {
+      border: 1.5px solid var(--gray-200);
+      border-radius: 7px;
+      padding: 8px 5px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.13s;
+      background: white;
+      color: var(--gray-700);
+      font-family: 'DM Sans', sans-serif;
+    }
+    .time-btn:hover    { border-color: #0d9488; color: #0d6e6e; background: #e0f7f7; }
+    .time-btn.selected { border-color: #0d9488; background: #e0f7f7; color: #0d6e6e; }
+
+    .or-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 12px 0 10px;
+      font-size: 11px; font-weight: 600;
+      color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.08em;
+    }
+    .or-divider::before, .or-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--gray-200);
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-wrap"><%- icon('hospital') %></div>
+    <span class="brand-name">MediFlow</span>
   </div>
 
-  <div class="card">
-    <h3>Add Patient</h3>
-    <p>Register walk-in patients.</p>
+  <div class="sidebar-section-label">Reception</div>
+  <nav>
+    <a href="/receptionist" class="active">
+      <span class="nav-icon"><%- icon('dashboard') %></span> Dashboard
+    </a>
+    <a href="/receptionist/appointments">
+      <span class="nav-icon"><%- icon('appointments') %></span> Manage Appointments
+    </a>
+    <a href="/receptionist/add-patient">
+      <span class="nav-icon"><%- icon('addpatient') %></span> Add Patient
+    </a>
+    <a class="nav-disabled">
+      <span class="nav-icon"><%- icon('queue') %></span> Live Queue
+    </a>
+    <a href="/receptionist/report">
+      <span class="nav-icon"><%- icon('report') %></span> Daily Report
+    </a>
+  </nav>
+
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-divider"></div>
+
+  <% if (typeof curruser !== 'undefined' && curruser) { %>
+  <div class="sidebar-user">
+    <div class="avatar"><%= curruser.username[0].toUpperCase() %></div>
+    <div>
+      <div class="user-name"><%= curruser.username %></div>
+      <div class="user-role"><%= curruser.role %></div>
+    </div>
+  </div>
+  <% } %>
+  <form action="/logout" method="GET">
+    <button class="logout-btn"><%- icon('logout') %> Logout</button>
+  </form>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+    <div class="flash flash-success"><%- icon('success') %> <%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+    <div class="flash flash-error"><%- icon('warning') %> <%= error %></div>
+  <% } %>
+
+  <div class="page-header" style="display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <h1>Reception Dashboard</h1>
+      <p>Manage all patient appointments and statuses.</p>
+    </div>
+    <div style="font-size:12.5px; color:var(--gray-500);" id="rec-date"></div>
   </div>
 
+  <!-- Stats -->
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:22px;">
+    <div class="stat-card">
+      <div class="stat-icon teal"><%- icon('appointments') %></div>
+      <div><div class="stat-value" id="stat-total">—</div><div class="stat-label">Total</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon yellow"><%- icon('clock') %></div>
+      <div><div class="stat-value" id="stat-pending">—</div><div class="stat-label">Pending</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green"><%- icon('check') %></div>
+      <div><div class="stat-value" id="stat-confirmed">—</div><div class="stat-label">Confirmed</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon red"><%- icon('x') %></div>
+      <div><div class="stat-value" id="stat-cancelled">—</div><div class="stat-label">Cancelled</div></div>
+    </div>
+  </div>
+
+  <!-- Appointments table -->
   <div class="card">
-    <h3>Daily Report</h3>
-    <p>Check today’s hospital activity.</p>
+    <div class="card-header-row">
+      <div>
+        <h2>All Appointments</h2>
+        <p>Search, filter and update statuses</p>
+      </div>
+    </div>
+
+    <div style="padding:14px 22px 0;">
+      <div class="search-bar">
+        <div class="search-input-wrap">
+          <%- icon('search') %>
+          <input type="text" id="searchInput" placeholder="Search by patient or doctor name…">
+        </div>
+      </div>
+      <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all">All</button>
+        <button class="filter-tab" data-filter="pending">Pending</button>
+        <button class="filter-tab" data-filter="confirmed">Confirmed</button>
+        <button class="filter-tab" data-filter="cancelled">Cancelled</button>
+      </div>
+    </div>
+
+    <% if (!appointments || appointments.length === 0) { %>
+      <div class="empty-state">
+        <div class="empty-icon"><%- icon('inbox') %></div>
+        <h3>No appointments found</h3>
+        <p>There are no appointments in the system yet.</p>
+      </div>
+    <% } else { %>
+    <div class="table-wrap">
+      <table id="apptTable">
+        <thead>
+          <tr>
+            <th>#</th><th>Patient</th><th>Doctor</th>
+            <th>Date</th><th>Time</th><th>Status</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% appointments.forEach((appt, i) => {
+            const s = (appt.status || 'Pending').toLowerCase();
+            const bc = s === 'confirmed' ? 'badge-confirmed' : s === 'cancelled' ? 'badge-cancelled' : 'badge-pending';
+            const dateVal = appt.date ? appt.date.toISOString().split('T')[0] : '';
+            const doctorId = appt.doctor ? appt.doctor._id.toString() : '';
+          %>
+          <tr data-status="<%= s %>"
+              data-search="<%= (appt.user ? appt.user.username : '').toLowerCase() %> <%= appt.doctor ? appt.doctor.name.toLowerCase() : '' %>">
+
+            <td style="color:var(--gray-400); font-size:11.5px;"><%= i+1 %></td>
+
+            <td>
+              <div class="td-primary"><%= appt.user ? appt.user.username : 'Unknown' %></div>
+              <div class="td-sub"><%= appt.user ? appt.user.email : '' %></div>
+            </td>
+
+            <td>
+              <div class="td-primary"><%= appt.doctor ? appt.doctor.name : 'N/A' %></div>
+              <div class="td-sub"><%= appt.doctor ? appt.doctor.specialization : '' %></div>
+            </td>
+
+            <td><%= new Date(appt.date).toDateString() %></td>
+            <td><%= appt.timeSlot %></td>
+            <td><span class="badge <%= bc %>"><%= appt.status || 'Pending' %></span></td>
+
+            <td>
+              <div class="actions-cell">
+
+                <!-- Schedule / Reschedule button -->
+                <button type="button" class="btn btn-warning btn-sm schedule-btn"
+                  data-id="<%= appt._id %>"
+                  data-doctor="<%= doctorId %>"
+                  data-date="<%= dateVal %>"
+                  data-time="<%= appt.timeSlot %>"
+                  data-patient="<%= appt.user ? appt.user.username : 'Unknown' %>">
+                  <%- icon('edit') %> Schedule
+                </button>
+
+                <!-- Confirm -->
+                <% if (s !== 'confirmed') { %>
+                <form style="display:inline;" action="/receptionist/confirm/<%= appt._id %>" method="POST">
+                  <button type="submit" class="btn btn-success btn-sm">
+                    <%- icon('check') %> Confirm
+                  </button>
+                </form>
+                <% } %>
+
+                <!-- Cancel -->
+                <% if (s !== 'cancelled') { %>
+                <form style="display:inline;" action="/receptionist/cancel/<%= appt._id %>" method="POST">
+                  <button type="submit" class="btn btn-danger btn-sm"
+                    onclick="return confirm('Cancel this appointment?')">
+                    <%- icon('x') %> Cancel
+                  </button>
+                </form>
+                <% } %>
+
+              </div>
+            </td>
+
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+
+</main>
+
+<!-- ══════════════════════════════════════
+     SCHEDULE / RESCHEDULE MODAL
+══════════════════════════════════════ -->
+<div class="modal-backdrop" id="scheduleModal">
+  <div class="modal">
+
+    <div class="modal-header">
+      <div>
+        <h3 id="modal-title">Schedule Appointment</h3>
+        <div class="modal-sub" id="modal-sub">Updating appointment for —</div>
+      </div>
+      <button class="modal-close" id="modalClose"><%- icon('x') %></button>
+    </div>
+
+    <div class="modal-body">
+      <form action="/receptionist/reschedule/PLACEHOLDER" method="POST" id="scheduleForm">
+
+        <!-- Doctor -->
+        <div class="form-group">
+          <label class="form-label">Doctor</label>
+          <select class="form-control" name="doctor" id="modal-doctor">
+            <% if (typeof doctors !== 'undefined') { %>
+              <% doctors.forEach(doc => { %>
+                <option value="<%= doc._id %>"><%= doc.name %> &ndash; <%= doc.specialization %></option>
+              <% }) %>
+            <% } %>
+          </select>
+        </div>
+
+        <!-- Date -->
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input class="form-control" type="date" name="date" id="modal-date" required>
+        </div>
+
+        <!-- Preset time slots -->
+        <div class="form-group">
+          <label class="form-label">Time Slot</label>
+          <input type="hidden" name="timeSlot" id="modal-timeslot-input">
+          <div class="time-grid" id="modal-time-grid">
+            <% ['9:00 AM','10:00 AM','11:00 AM','12:00 PM','2:00 PM','3:00 PM'].forEach(t => { %>
+            <button type="button" class="time-btn" data-val="<%= t.split(' ')[0] %>"><%= t %></button>
+            <% }) %>
+          </div>
+
+          <!-- Custom time -->
+          <div class="or-divider">or enter custom time</div>
+          <input class="form-control" type="text" id="modal-custom-time"
+                 placeholder="e.g. 4:30 PM or 14:30"
+                 style="font-size:13px;">
+          <div style="font-size:11px; color:var(--gray-400); margin-top:4px;">
+            Typing here will override the slot selection above.
+          </div>
+        </div>
+
+      </form>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" id="modalCancel">Cancel</button>
+      <button type="button" class="btn btn-warning" id="modalSubmit"><%- icon('edit') %> Save Schedule</button>
+    </div>
+
   </div>
 </div>
+
+<script>
+  // ── Date & stats ──────────────────────────────────────
+  document.getElementById('rec-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  const rows = document.querySelectorAll('#apptTable tbody tr');
+  document.getElementById('stat-total').textContent     = rows.length;
+  document.getElementById('stat-pending').textContent   = [...rows].filter(r => r.dataset.status === 'pending').length;
+  document.getElementById('stat-confirmed').textContent = [...rows].filter(r => r.dataset.status === 'confirmed').length;
+  document.getElementById('stat-cancelled').textContent = [...rows].filter(r => r.dataset.status === 'cancelled').length;
+
+  // ── Filter tabs ───────────────────────────────────────
+  let activeFilter = 'all';
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeFilter = tab.dataset.filter;
+      applyFilters();
+    });
+  });
+
+  document.getElementById('searchInput').addEventListener('input', applyFilters);
+
+  function applyFilters() {
+    const q = document.getElementById('searchInput').value.toLowerCase();
+    rows.forEach(row => {
+      const matchFilter = activeFilter === 'all' || row.dataset.status === activeFilter;
+      const matchSearch = !q || row.dataset.search.includes(q);
+      row.classList.toggle('hidden', !(matchFilter && matchSearch));
+    });
+  }
+
+  // ── Modal ─────────────────────────────────────────────
+  const modal    = document.getElementById('scheduleModal');
+  const form     = document.getElementById('scheduleForm');
+  const minDate  = new Date().toISOString().split('T')[0];
+
+  document.getElementById('modal-date').min = minDate;
+
+  // Open modal when Schedule button clicked
+  document.querySelectorAll('.schedule-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id      = btn.dataset.id;
+      const doctor  = btn.dataset.doctor;
+      const date    = btn.dataset.date;
+      const time    = btn.dataset.time;   // e.g. "9:00"
+      const patient = btn.dataset.patient;
+
+      // Update form action with correct appointment id
+      form.action = `/receptionist/reschedule/${id}`;
+
+      // Update modal heading
+      document.getElementById('modal-title').textContent = 'Schedule Appointment';
+      document.getElementById('modal-sub').textContent   = `Patient: ${patient}`;
+
+      // Pre-fill doctor
+      const doctorSel = document.getElementById('modal-doctor');
+      if (doctor) {
+        [...doctorSel.options].forEach(opt => {
+          opt.selected = opt.value === doctor;
+        });
+      }
+
+      // Pre-fill date
+      document.getElementById('modal-date').value = date || '';
+
+      // Pre-select time slot if it matches a preset
+      const presets = document.querySelectorAll('#modal-time-grid .time-btn');
+      let matchedPreset = false;
+      presets.forEach(b => {
+        b.classList.remove('selected');
+        if (b.dataset.val === time) {
+          b.classList.add('selected');
+          matchedPreset = true;
+        }
+      });
+
+      // If no preset matched, put it in custom field
+      document.getElementById('modal-timeslot-input').value = time || '';
+      document.getElementById('modal-custom-time').value = matchedPreset ? '' : (time || '');
+
+      modal.classList.add('open');
+    });
+  });
+
+  // Close modal
+  function closeModal() { modal.classList.remove('open'); }
+  document.getElementById('modalClose').addEventListener('click', closeModal);
+  document.getElementById('modalCancel').addEventListener('click', closeModal);
+  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+  // Preset time slot clicks inside modal
+  document.querySelectorAll('#modal-time-grid .time-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#modal-time-grid .time-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      document.getElementById('modal-timeslot-input').value = btn.dataset.val;
+      document.getElementById('modal-custom-time').value = '';  // clear custom
+    });
+  });
+
+  // Custom time overrides preset
+  document.getElementById('modal-custom-time').addEventListener('input', function() {
+    if (this.value.trim()) {
+      // Deselect all presets
+      document.querySelectorAll('#modal-time-grid .time-btn').forEach(b => b.classList.remove('selected'));
+      document.getElementById('modal-timeslot-input').value = this.value.trim();
+    }
+  });
+
+  // Submit modal form
+  document.getElementById('modalSubmit').addEventListener('click', () => {
+    const date     = document.getElementById('modal-date').value;
+    const timeSlot = document.getElementById('modal-timeslot-input').value.trim();
+
+    if (!date) {
+      document.getElementById('modal-date').classList.add('error');
+      document.getElementById('modal-date').focus();
+      return;
+    }
+    if (!timeSlot) {
+      document.getElementById('modal-custom-time').classList.add('error');
+      document.getElementById('modal-custom-time').focus();
+      return;
+    }
+
+    document.getElementById('modal-date').classList.remove('error');
+    document.getElementById('modal-custom-time').classList.remove('error');
+    form.submit();
+  });
+</script>
+
+</body>
+</html>

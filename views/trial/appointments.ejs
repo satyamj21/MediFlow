@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>MediFlow – My Appointments</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/mediflow.css">
+</head>
+<body>
+
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-wrap"><%- icon('hospital') %></div>
+    <span class="brand-name">MediFlow</span>
+  </div>
+  <div class="sidebar-section-label">Navigation</div>
+  <nav>
+    <a href="/user"><span class="nav-icon"><%- icon('dashboard') %></span> Dashboard</a>
+    <a href="/book"><span class="nav-icon"><%- icon('calendar') %></span> Book Appointment</a>
+    <a href="/appointments" class="active"><span class="nav-icon"><%- icon('appointments') %></span> My Appointments</a>
+    <a class="nav-disabled"><span class="nav-icon"><%- icon('queue') %></span> Live Queue</a>
+  </nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-divider"></div>
+  <% if (typeof curruser !== 'undefined' && curruser) { %>
+  <div class="sidebar-user">
+    <div class="avatar"><%= curruser.username[0].toUpperCase() %></div>
+    <div>
+      <div class="user-name"><%= curruser.username %></div>
+      <div class="user-role"><%= curruser.role %></div>
+    </div>
+  </div>
+  <% } %>
+  <form action="/logout" method="GET">
+    <button class="logout-btn"><%- icon('logout') %> Logout</button>
+  </form>
+</aside>
+
+<main class="main">
+  <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+    <div class="flash flash-success"><%- icon('success') %> <%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+    <div class="flash flash-error"><%- icon('warning') %> <%= error %></div>
+  <% } %>
+
+  <div class="page-header" style="display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <h1>My Appointments</h1>
+      <p>View and manage your upcoming visits.</p>
+    </div>
+    <a href="/book" class="btn btn-primary"><%- icon('plus') %> Book New</a>
+  </div>
+
+  <div class="card">
+    <% if (!appointments || appointments.length === 0) { %>
+      <div class="empty-state">
+        <div class="empty-icon"><%- icon('inbox') %></div>
+        <h3>No appointments yet</h3>
+        <p>You haven't booked any appointments.<br>
+          <a href="/book" style="color:var(--blue-mid); font-weight:600;">Book one now</a>
+        </p>
+      </div>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Doctor</th><th>Date</th><th>Time</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% appointments.forEach((appt, i) => {
+              const s = (appt.status || 'Pending').toLowerCase();
+              const bc = s === 'confirmed' ? 'badge-confirmed' : s === 'cancelled' ? 'badge-cancelled' : 'badge-pending';
+            %>
+            <tr>
+              <td style="color:var(--gray-400); font-size:12px;"><%= i + 1 %></td>
+              <td>
+                <div class="td-primary"><%= appt.doctor.name %></div>
+                <div class="td-sub"><%= appt.doctor.specialization %></div>
+              </td>
+              <td><%= new Date(appt.date).toDateString() %></td>
+              <td><%= appt.timeSlot %></td>
+              <td><span class="badge <%= bc %>"><%= appt.status || 'Pending' %></span></td>
+              <td>
+                <div class="actions-cell">
+                  <% if (appt.status === 'Pending' || !appt.status) { %>
+                    <a href="/reschedule/<%= appt._id %>" class="btn btn-warning btn-sm">
+                      <%- icon('edit') %> Reschedule
+                    </a>
+                    <form style="display:inline;" action="/cancel/<%= appt._id %>" method="POST"
+                          onsubmit="return confirm('Cancel this appointment?')">
+                      <button type="submit" class="btn btn-danger btn-sm">
+                        <%- icon('x') %> Cancel
+                      </button>
+                    </form>
+                  <% } else { %>
+                    <span style="color:var(--gray-400); font-size:12.5px;">—</span>
+                  <% } %>
+                </div>
+              </td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </div>
+</main>
+</body>
+</html>
