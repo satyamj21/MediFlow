@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>MediFlow – Book Appointment</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/mediflow.css">
@@ -105,7 +106,7 @@
     <a href="/user"><span class="nav-icon"><%- icon('dashboard') %></span> Dashboard</a>
     <a href="/book" class="active"><span class="nav-icon"><%- icon('calendar') %></span> Book Appointment</a>
     <a href="/appointments"><span class="nav-icon"><%- icon('appointments') %></span> My Appointments</a>
-    <a class="nav-disabled"><span class="nav-icon"><%- icon('queue') %></span> Live Queue</a>
+    <a href="/user/queue"><span class="nav-icon"><%- icon('queue') %></span> Live Queue</a>
   </nav>
   <div class="sidebar-spacer"></div>
   <div class="sidebar-divider"></div>
@@ -174,14 +175,35 @@
 
         <!-- Time slot -->
         <div class="form-group">
-          <label class="form-label">Select Time Slot</label>
+          <label class="form-label">Select Hour</label>
           <input type="hidden" name="timeSlot" id="timeSlotInput">
-          <div class="time-grid">
-            <% ['9:00 AM','10:00 AM','11:00 AM','12:00 PM','2:00 PM','3:00 PM'].forEach(t => { %>
-            <button type="button" class="time-btn" data-val="<%= t.split(' ')[0] %>"><%= t %></button>
+          <div class="time-grid" id="hourGrid">
+            <% 
+              const hours = [];
+              for(let i = 8; i <= 23; i++) {
+                const isPm = i >= 12;
+                const hh = i > 12 ? i - 12 : (i === 0 ? 12 : i);
+                const ampm = isPm ? 'PM' : 'AM';
+                hours.push({ val: i, label: `${hh} ${ampm}` });
+              }
+            %>
+            <% hours.forEach(h => { %>
+              <button type="button" class="time-btn hour-btn" data-hour="<%= h.val %>" data-label="<%= h.label %>"><%= h.label %></button>
             <% }) %>
           </div>
-          <div class="field-error" id="err-time">Please select a time slot.</div>
+          
+          <div id="minuteSelection" style="display: none; margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--gray-200);">
+            <label class="form-label">Select Minute for <span id="selectedHourLabel" style="color:var(--blue-mid);"></span></label>
+            <div class="time-grid" id="minuteGrid">
+              <% ['00', '10', '20', '30', '40', '50'].forEach(m => { %>
+                <button type="button" class="time-btn min-btn" data-min="<%= m %>">:<%= m %></button>
+              <% }) %>
+            </div>
+            <div style="margin-top: 10px; font-size: 13.5px; font-weight: 600; color: var(--blue-mid);">
+              Selected Time: <span id="finalTimeLabel" style="color:var(--gray-900);">None</span>
+            </div>
+          </div>
+          <div class="field-error" id="err-time">Please select an hour and minute slot.</div>
         </div>
 
         <div class="submit-row">
@@ -206,12 +228,43 @@
     });
   });
 
-  // Time slot selection
-  document.querySelectorAll('.time-btn').forEach(btn => {
+  // Time slot selection (Hour)
+  let selectedHour = null;
+  document.querySelectorAll('.hour-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-      document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+      document.querySelectorAll('.hour-btn').forEach(b => b.classList.remove('selected'));
       this.classList.add('selected');
-      document.getElementById('timeSlotInput').value = this.dataset.val;
+      
+      selectedHour = this.dataset.hour;
+      
+      // Reset minute selection
+      document.querySelectorAll('.min-btn').forEach(b => b.classList.remove('selected'));
+      document.getElementById('timeSlotInput').value = '';
+      document.getElementById('finalTimeLabel').textContent = 'None';
+      
+      // Show minute grid
+      document.getElementById('minuteSelection').style.display = 'block';
+      document.getElementById('selectedHourLabel').textContent = this.dataset.label;
+    });
+  });
+
+  // Time slot selection (Minute)
+  document.querySelectorAll('.min-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      if (!selectedHour) return;
+      document.querySelectorAll('.min-btn').forEach(b => b.classList.remove('selected'));
+      this.classList.add('selected');
+      
+      const min = this.dataset.min;
+      const hh = parseInt(selectedHour);
+      const isPm = hh >= 12;
+      const displayH = hh > 12 ? hh - 12 : (hh === 0 ? 12 : hh);
+      const ampm = isPm ? 'PM' : 'AM';
+      
+      const finalTimeStr = `${displayH}:${min} ${ampm}`;
+      
+      document.getElementById('timeSlotInput').value = finalTimeStr;
+      document.getElementById('finalTimeLabel').textContent = finalTimeStr;
       document.getElementById('err-time').classList.remove('show');
     });
   });

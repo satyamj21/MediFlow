@@ -285,3 +285,59 @@ tbody td { padding:11px 16px; font-size:13px; vertical-align:middle; }
 .filter-tab:hover  { background:var(--gray-200); }
 .filter-tab.active { background:var(--blue-mid); color:white; }
 .hidden { display:none !important; }
+
+/* ══════ ANIMATIONS ══════ */
+
+/* Button press / click feedback */
+.btn:active { transform: scale(0.96); }
+
+/* Subtle hover lift for stat cards */
+.stat-card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+/* Flash slide-in (already defined above – extended with fade out) */
+.flash { animation: slideDown 0.25s ease; }
+
+/* Row fade-in for table rows */
+@keyframes rowFadeIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.row-fade-in { animation: rowFadeIn 0.3s ease both; }
+
+/* FadeInUp for cards/sections */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Emergency pulse ring (used on receptionist side button) */
+@keyframes emergencyRing {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.6); }
+}
+@keyframes emergencyPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.55); }
+  50%       { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+}
+
+/* Smooth form control transitions */
+.form-control { transition: border-color 0.18s, box-shadow 0.18s, transform 0.12s; }
+
+/* Action card hover effects */
+.action-card { transition: border-color 0.18s, transform 0.22s, box-shadow 0.22s; }
+
+/* Icon size helper for profile rows */
+.profile-row svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--gray-500); }
+
+/* Doctor card hover (complements inline styles) */
+.doctor-card { transition: border-color 0.2s, transform 0.22s, box-shadow 0.22s; }
+
+/* Emergency active badge in sidebar (receptionist only) */
+.emergency-active-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #ef4444;
+  display: inline-block; margin-left: 4px;
+  animation: emergencyPulse 0.9s ease-in-out infinite;
+}

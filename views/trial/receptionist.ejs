@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>MediFlow – Reception</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/mediflow.css">
@@ -15,92 +16,121 @@
     /* ── Schedule modal ── */
     .modal-backdrop {
       display: none;
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background: rgba(15,52,96,0.35);
       backdrop-filter: blur(2px);
       z-index: 500;
-      align-items: center;
-      justify-content: center;
+      align-items: center; justify-content: center;
     }
     .modal-backdrop.open { display: flex; }
-
     .modal {
-      background: white;
-      border-radius: var(--radius);
+      background: white; border-radius: var(--radius);
       box-shadow: 0 8px 40px rgba(15,52,96,0.18);
-      width: 100%;
-      max-width: 460px;
-      margin: 20px;
+      width: 100%; max-width: 460px; margin: 20px;
       animation: modalIn 0.2s ease;
     }
-
     @keyframes modalIn {
       from { opacity:0; transform:translateY(-12px); }
       to   { opacity:1; transform:translateY(0); }
     }
-
     .modal-header {
-      padding: 18px 22px 14px;
-      border-bottom: 1px solid var(--gray-100);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      padding: 18px 22px 14px; border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: center; justify-content: space-between;
     }
     .modal-header h3 { font-size: 15px; font-weight: 700; color: var(--gray-900); }
     .modal-header .modal-sub { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
-
     .modal-close {
-      background: none; border: none; cursor: pointer;
-      color: var(--gray-400); padding: 4px;
-      border-radius: 6px; transition: all 0.14s;
-      display: flex; align-items: center;
+      background: none; border: none; cursor: pointer; color: var(--gray-400);
+      padding: 4px; border-radius: 6px; transition: all 0.14s; display: flex; align-items: center;
     }
     .modal-close:hover { background: var(--gray-100); color: var(--gray-700); }
     .modal-close svg { width: 16px; height: 16px; }
-
     .modal-body { padding: 18px 22px; }
-
-    .modal-footer {
-      padding: 14px 22px 18px;
-      display: flex;
-      gap: 9px;
-    }
+    .modal-footer { padding: 14px 22px 18px; display: flex; gap: 9px; }
     .modal-footer .btn { flex: 1; justify-content: center; padding: 10px; }
 
-    /* Time slot grid inside modal */
-    .time-grid {
-      display: grid;
-      grid-template-columns: repeat(3,1fr);
-      gap: 7px;
-      margin-top: 5px;
-    }
-
+    .time-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; margin-top: 5px; }
     .time-btn {
-      border: 1.5px solid var(--gray-200);
-      border-radius: 7px;
-      padding: 8px 5px;
-      text-align: center;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.13s;
-      background: white;
-      color: var(--gray-700);
+      border: 1.5px solid var(--gray-200); border-radius: 7px; padding: 8px 5px;
+      text-align: center; font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: all 0.13s; background: white; color: var(--gray-700);
       font-family: 'DM Sans', sans-serif;
     }
     .time-btn:hover    { border-color: #0d9488; color: #0d6e6e; background: #e0f7f7; }
     .time-btn.selected { border-color: #0d9488; background: #e0f7f7; color: #0d6e6e; }
-
     .or-divider {
-      display: flex; align-items: center; gap: 10px;
-      margin: 12px 0 10px;
-      font-size: 11px; font-weight: 600;
-      color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.08em;
+      display: flex; align-items: center; gap: 10px; margin: 12px 0 10px;
+      font-size: 11px; font-weight: 600; color: var(--gray-400);
+      text-transform: uppercase; letter-spacing: 0.08em;
     }
-    .or-divider::before, .or-divider::after {
-      content: ''; flex: 1; height: 1px; background: var(--gray-200);
+    .or-divider::before, .or-divider::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
+
+    /* ── Emergency button & modal ── */
+    .emergency-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 10px 18px; background: var(--red); color: white;
+      border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: all 0.16s; position: relative; overflow: hidden;
     }
+    .emergency-btn::before {
+      content: '';
+      position: absolute; inset: -4px;
+      border-radius: 12px;
+      border: 2px solid rgba(239,68,68,0.5);
+      animation: emergencyRing 1.8s ease-out infinite;
+      pointer-events: none;
+    }
+    .emergency-btn:hover { background: var(--red-dark); transform: scale(1.04); box-shadow: 0 4px 16px rgba(239,68,68,0.4); }
+    .emergency-btn.active-emergency { background: #7f1d1d; animation: emergencyPulse 0.9s ease-in-out infinite; }
+    @keyframes emergencyRing {
+      0%   { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.5); }
+    }
+    @keyframes emergencyPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); }
+      50%       { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+    }
+    .emergency-btn svg { width: 15px; height: 15px; }
+
+    .clear-emergency-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      padding: 10px 18px; background: var(--gray-700); color: white;
+      border: none; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+      font-size: 13px; font-weight: 700; cursor: pointer; transition: all 0.16s;
+    }
+    .clear-emergency-btn:hover { background: var(--gray-900); }
+
+    /* Emergency modal */
+    .emergency-modal-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(127,29,29,0.4); backdrop-filter: blur(3px);
+      z-index: 600; align-items: center; justify-content: center;
+    }
+    .emergency-modal-backdrop.open { display: flex; }
+    .emergency-modal {
+      background: white; border-radius: var(--radius);
+      box-shadow: 0 8px 40px rgba(127,29,29,0.3);
+      width: 100%; max-width: 420px; margin: 20px;
+      animation: modalIn 0.22s ease;
+      border-top: 5px solid var(--red);
+    }
+    .emg-header { padding: 20px 22px 14px; }
+    .emg-header h3 { font-size: 17px; font-weight: 800; color: #7f1d1d; display:flex; align-items:center; gap:9px; }
+    .emg-header p { font-size: 13px; color: var(--gray-500); margin-top: 5px; }
+    .emg-body { padding: 4px 22px 18px; }
+    .emg-footer { padding: 14px 22px 20px; display: flex; gap: 9px; }
+    .emg-footer .btn { flex: 1; justify-content: center; padding: 11px; }
+
+    /* Active emergency status bar */
+    .emergency-status-bar {
+      display: none; background: linear-gradient(90deg, #7f1d1d, #dc2626);
+      color: white; padding: 10px 20px; border-radius: var(--radius);
+      margin-bottom: 18px; font-weight: 700; font-size: 13px;
+      align-items: center; gap: 10px; animation: slideDown 0.25s ease;
+    }
+    .emergency-status-bar.visible { display: flex; }
+    .emergency-status-bar svg { width: 16px; height: 16px; flex-shrink: 0; }
   </style>
 </head>
 <body>
@@ -117,14 +147,20 @@
     <a href="/receptionist" class="active">
       <span class="nav-icon"><%- icon('dashboard') %></span> Dashboard
     </a>
+    <a href="/receptionist/queue">
+      <span class="nav-icon"><%- icon('queue') %></span> Live Queue
+    </a>
     <a href="/receptionist/appointments">
       <span class="nav-icon"><%- icon('appointments') %></span> Manage Appointments
+    </a>
+    <a href="/receptionist/patients">
+      <span class="nav-icon"><%- icon('patients') %></span> Patients
     </a>
     <a href="/receptionist/add-patient">
       <span class="nav-icon"><%- icon('addpatient') %></span> Add Patient
     </a>
-    <a class="nav-disabled">
-      <span class="nav-icon"><%- icon('queue') %></span> Live Queue
+    <a href="/receptionist/doctors">
+      <span class="nav-icon"><%- icon('doctor') %></span> Doctors
     </a>
     <a href="/receptionist/report">
       <span class="nav-icon"><%- icon('report') %></span> Daily Report
@@ -158,12 +194,27 @@
     <div class="flash flash-error"><%- icon('warning') %> <%= error %></div>
   <% } %>
 
-  <div class="page-header" style="display:flex; align-items:center; justify-content:space-between;">
+  <!-- Emergency status bar (shown when active) -->
+  <div class="emergency-status-bar" id="emergencyStatusBar">
+    <%- icon('emergency') %>
+    <span>EMERGENCY ACTIVE – Alert sent to all patients. <a href="#" onclick="document.getElementById('emergencyStatusBar').classList.remove('visible')" style="color:rgba(255,255,255,0.7); font-size:12px;">dismiss</a></span>
+    <form action="/receptionist/emergency/clear" method="POST" style="margin-left:auto;">
+      <button type="submit" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:white; padding:4px 12px; border-radius:6px; font-family:'DM Sans',sans-serif; font-size:12px; font-weight:700; cursor:pointer;">Clear Alert</button>
+    </form>
+  </div>
+
+  <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
     <div>
       <h1>Reception Dashboard</h1>
       <p>Manage all patient appointments and statuses.</p>
     </div>
-    <div style="font-size:12.5px; color:var(--gray-500);" id="rec-date"></div>
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+      <div style="font-size:12.5px; color:var(--gray-500);" id="rec-date"></div>
+      <!-- Emergency button -->
+      <button class="emergency-btn" id="openEmergencyModal" type="button">
+        <%- icon('emergency') %> Emergency
+      </button>
+    </div>
   </div>
 
   <!-- Stats -->
@@ -253,7 +304,6 @@
 
             <td>
               <div class="actions-cell">
-
                 <!-- Schedule / Reschedule button -->
                 <button type="button" class="btn btn-warning btn-sm schedule-btn"
                   data-id="<%= appt._id %>"
@@ -264,16 +314,12 @@
                   <%- icon('edit') %> Schedule
                 </button>
 
-                <!-- Confirm -->
                 <% if (s !== 'confirmed') { %>
                 <form style="display:inline;" action="/receptionist/confirm/<%= appt._id %>" method="POST">
-                  <button type="submit" class="btn btn-success btn-sm">
-                    <%- icon('check') %> Confirm
-                  </button>
+                  <button type="submit" class="btn btn-success btn-sm"><%- icon('check') %> Confirm</button>
                 </form>
                 <% } %>
 
-                <!-- Cancel -->
                 <% if (s !== 'cancelled') { %>
                 <form style="display:inline;" action="/receptionist/cancel/<%= appt._id %>" method="POST">
                   <button type="submit" class="btn btn-danger btn-sm"
@@ -282,10 +328,8 @@
                   </button>
                 </form>
                 <% } %>
-
               </div>
             </td>
-
           </tr>
           <% }) %>
         </tbody>
@@ -296,12 +340,9 @@
 
 </main>
 
-<!-- ══════════════════════════════════════
-     SCHEDULE / RESCHEDULE MODAL
-══════════════════════════════════════ -->
+<!-- SCHEDULE / RESCHEDULE MODAL -->
 <div class="modal-backdrop" id="scheduleModal">
   <div class="modal">
-
     <div class="modal-header">
       <div>
         <h3 id="modal-title">Schedule Appointment</h3>
@@ -309,11 +350,8 @@
       </div>
       <button class="modal-close" id="modalClose"><%- icon('x') %></button>
     </div>
-
     <div class="modal-body">
       <form action="/receptionist/reschedule/PLACEHOLDER" method="POST" id="scheduleForm">
-
-        <!-- Doctor -->
         <div class="form-group">
           <label class="form-label">Doctor</label>
           <select class="form-control" name="doctor" id="modal-doctor">
@@ -324,14 +362,10 @@
             <% } %>
           </select>
         </div>
-
-        <!-- Date -->
         <div class="form-group">
           <label class="form-label">Date</label>
           <input class="form-control" type="date" name="date" id="modal-date" required>
         </div>
-
-        <!-- Preset time slots -->
         <div class="form-group">
           <label class="form-label">Time Slot</label>
           <input type="hidden" name="timeSlot" id="modal-timeslot-input">
@@ -340,25 +374,48 @@
             <button type="button" class="time-btn" data-val="<%= t.split(' ')[0] %>"><%= t %></button>
             <% }) %>
           </div>
-
-          <!-- Custom time -->
           <div class="or-divider">or enter custom time</div>
           <input class="form-control" type="text" id="modal-custom-time"
-                 placeholder="e.g. 4:30 PM or 14:30"
-                 style="font-size:13px;">
+                 placeholder="e.g. 4:30 PM or 14:30" style="font-size:13px;">
           <div style="font-size:11px; color:var(--gray-400); margin-top:4px;">
             Typing here will override the slot selection above.
           </div>
         </div>
-
       </form>
     </div>
-
     <div class="modal-footer">
       <button type="button" class="btn btn-ghost" id="modalCancel">Cancel</button>
       <button type="button" class="btn btn-warning" id="modalSubmit"><%- icon('edit') %> Save Schedule</button>
     </div>
+  </div>
+</div>
 
+<!-- EMERGENCY MODAL -->
+<div class="emergency-modal-backdrop" id="emergencyModal">
+  <div class="emergency-modal">
+    <div class="emg-header">
+      <h3><%- icon('emergency') %> Trigger Emergency Alert</h3>
+      <p>This will immediately display an alert on all patient dashboards via real-time polling.</p>
+    </div>
+    <div class="emg-body">
+      <form action="/receptionist/emergency/trigger" method="POST" id="emergencyForm">
+        <div class="form-group">
+          <label class="form-label">Alert Message (optional)</label>
+          <input class="form-control" type="text" name="message"
+            placeholder="Emergency Alert! Please follow staff instructions."
+            style="border-color: #fca5a5;">
+          <div style="font-size:11.5px; color:var(--gray-400); margin-top:5px;">
+            Leave blank to use the default emergency message.
+          </div>
+        </div>
+      </form>
+    </div>
+    <div class="emg-footer">
+      <button type="button" class="btn btn-ghost" id="closeEmergencyModal">Cancel</button>
+      <button type="button" class="btn btn-danger" id="submitEmergency" style="font-weight:800;">
+        <%- icon('emergency') %> Activate Emergency
+      </button>
+    </div>
   </div>
 </div>
 
@@ -367,10 +424,16 @@
   document.getElementById('rec-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
 
   const rows = document.querySelectorAll('#apptTable tbody tr');
-  document.getElementById('stat-total').textContent     = rows.length;
-  document.getElementById('stat-pending').textContent   = [...rows].filter(r => r.dataset.status === 'pending').length;
-  document.getElementById('stat-confirmed').textContent = [...rows].filter(r => r.dataset.status === 'confirmed').length;
-  document.getElementById('stat-cancelled').textContent = [...rows].filter(r => r.dataset.status === 'cancelled').length;
+  if (rows.length) {
+    document.getElementById('stat-total').textContent     = rows.length;
+    document.getElementById('stat-pending').textContent   = [...rows].filter(r => r.dataset.status === 'pending').length;
+    document.getElementById('stat-confirmed').textContent = [...rows].filter(r => r.dataset.status === 'confirmed').length;
+    document.getElementById('stat-cancelled').textContent = [...rows].filter(r => r.dataset.status === 'cancelled').length;
+  } else {
+    ['stat-total','stat-pending','stat-confirmed','stat-cancelled'].forEach(id => {
+      document.getElementById(id).textContent = '0';
+    });
+  }
 
   // ── Filter tabs ───────────────────────────────────────
   let activeFilter = 'all';
@@ -382,9 +445,7 @@
       applyFilters();
     });
   });
-
   document.getElementById('searchInput').addEventListener('input', applyFilters);
-
   function applyFilters() {
     const q = document.getElementById('searchInput').value.toLowerCase();
     rows.forEach(row => {
@@ -394,103 +455,91 @@
     });
   }
 
-  // ── Modal ─────────────────────────────────────────────
-  const modal    = document.getElementById('scheduleModal');
-  const form     = document.getElementById('scheduleForm');
-  const minDate  = new Date().toISOString().split('T')[0];
-
+  // ── Schedule modal ────────────────────────────────────
+  const modal   = document.getElementById('scheduleModal');
+  const form    = document.getElementById('scheduleForm');
+  const minDate = new Date().toISOString().split('T')[0];
   document.getElementById('modal-date').min = minDate;
 
-  // Open modal when Schedule button clicked
   document.querySelectorAll('.schedule-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const id      = btn.dataset.id;
-      const doctor  = btn.dataset.doctor;
-      const date    = btn.dataset.date;
-      const time    = btn.dataset.time;   // e.g. "9:00"
-      const patient = btn.dataset.patient;
-
-      // Update form action with correct appointment id
+      const id = btn.dataset.id, doctor = btn.dataset.doctor,
+            date = btn.dataset.date, time = btn.dataset.time, patient = btn.dataset.patient;
       form.action = `/receptionist/reschedule/${id}`;
-
-      // Update modal heading
       document.getElementById('modal-title').textContent = 'Schedule Appointment';
       document.getElementById('modal-sub').textContent   = `Patient: ${patient}`;
-
-      // Pre-fill doctor
       const doctorSel = document.getElementById('modal-doctor');
-      if (doctor) {
-        [...doctorSel.options].forEach(opt => {
-          opt.selected = opt.value === doctor;
-        });
-      }
-
-      // Pre-fill date
+      if (doctor) [...doctorSel.options].forEach(opt => { opt.selected = opt.value === doctor; });
       document.getElementById('modal-date').value = date || '';
-
-      // Pre-select time slot if it matches a preset
       const presets = document.querySelectorAll('#modal-time-grid .time-btn');
       let matchedPreset = false;
       presets.forEach(b => {
         b.classList.remove('selected');
-        if (b.dataset.val === time) {
-          b.classList.add('selected');
-          matchedPreset = true;
-        }
+        if (b.dataset.val === time) { b.classList.add('selected'); matchedPreset = true; }
       });
-
-      // If no preset matched, put it in custom field
       document.getElementById('modal-timeslot-input').value = time || '';
       document.getElementById('modal-custom-time').value = matchedPreset ? '' : (time || '');
-
       modal.classList.add('open');
     });
   });
-
-  // Close modal
   function closeModal() { modal.classList.remove('open'); }
   document.getElementById('modalClose').addEventListener('click', closeModal);
   document.getElementById('modalCancel').addEventListener('click', closeModal);
   modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-
-  // Preset time slot clicks inside modal
   document.querySelectorAll('#modal-time-grid .time-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('#modal-time-grid .time-btn').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
       document.getElementById('modal-timeslot-input').value = btn.dataset.val;
-      document.getElementById('modal-custom-time').value = '';  // clear custom
+      document.getElementById('modal-custom-time').value = '';
     });
   });
-
-  // Custom time overrides preset
   document.getElementById('modal-custom-time').addEventListener('input', function() {
     if (this.value.trim()) {
-      // Deselect all presets
       document.querySelectorAll('#modal-time-grid .time-btn').forEach(b => b.classList.remove('selected'));
       document.getElementById('modal-timeslot-input').value = this.value.trim();
     }
   });
-
-  // Submit modal form
   document.getElementById('modalSubmit').addEventListener('click', () => {
-    const date     = document.getElementById('modal-date').value;
+    const date = document.getElementById('modal-date').value;
     const timeSlot = document.getElementById('modal-timeslot-input').value.trim();
-
-    if (!date) {
-      document.getElementById('modal-date').classList.add('error');
-      document.getElementById('modal-date').focus();
-      return;
-    }
-    if (!timeSlot) {
-      document.getElementById('modal-custom-time').classList.add('error');
-      document.getElementById('modal-custom-time').focus();
-      return;
-    }
-
+    if (!date) { document.getElementById('modal-date').classList.add('error'); document.getElementById('modal-date').focus(); return; }
+    if (!timeSlot) { document.getElementById('modal-custom-time').classList.add('error'); document.getElementById('modal-custom-time').focus(); return; }
     document.getElementById('modal-date').classList.remove('error');
     document.getElementById('modal-custom-time').classList.remove('error');
     form.submit();
+  });
+
+  // ── Emergency modal ───────────────────────────────────
+  const emgModal = document.getElementById('emergencyModal');
+  document.getElementById('openEmergencyModal').addEventListener('click', () => {
+    emgModal.classList.add('open');
+  });
+  document.getElementById('closeEmergencyModal').addEventListener('click', () => {
+    emgModal.classList.remove('open');
+  });
+  emgModal.addEventListener('click', e => { if (e.target === emgModal) emgModal.classList.remove('open'); });
+  document.getElementById('submitEmergency').addEventListener('click', () => {
+    document.getElementById('emergencyForm').submit();
+  });
+
+  // ── Check if emergency is currently active on load ────
+  fetch('/api/emergency/status')
+    .then(r => r.json())
+    .then(data => {
+      if (data.active) {
+        document.getElementById('emergencyStatusBar').classList.add('visible');
+        document.getElementById('openEmergencyModal').classList.add('active-emergency');
+      }
+    })
+    .catch(() => {});
+
+  // ── Animate stat cards on load ────────────────────────
+  document.querySelectorAll('.stat-card').forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(12px)';
+    card.style.transition = `opacity 0.3s ease ${i * 70}ms, transform 0.3s ease ${i * 70}ms`;
+    requestAnimationFrame(() => { card.style.opacity = '1'; card.style.transform = 'translateY(0)'; });
   });
 </script>
 

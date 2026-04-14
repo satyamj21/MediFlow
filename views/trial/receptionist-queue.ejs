@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>MediFlow – Reception Queue</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/mediflow.css">
+  <style>
+    .sidebar { background: linear-gradient(175deg, #0d6e6e 0%, #0e9090 100%); }
+    .sidebar nav a.active { background: rgba(255,255,255,0.22); }
+
+    /* ── Summary Stats ── */
+    .summary-stats {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px;
+    }
+    .summary-stat {
+      background: white; border: 1px solid var(--gray-200); border-radius: var(--radius);
+      padding: 18px 16px; display: flex; align-items: center; gap: 14px;
+      transition: all 0.2s;
+    }
+    .summary-stat:hover { box-shadow: 0 4px 16px rgba(15,52,96,0.08); }
+    .ss-icon {
+      width: 42px; height: 42px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .ss-icon svg { width: 20px; height: 20px; }
+    .ss-icon.blue   { background: #dbeafe; color: #1d4ed8; }
+    .ss-icon.green  { background: #dcfce7; color: #16a34a; }
+    .ss-icon.yellow { background: #fef9c3; color: #ca8a04; }
+    .ss-icon.teal   { background: #ccfbf1; color: #0d9488; }
+    .ss-value { font-size: 24px; font-weight: 800; color: var(--gray-900); }
+    .ss-label { font-size: 12px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* ── Doctor filter tabs ── */
+    .doctor-tabs {
+      display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px;
+      padding: 4px; background: var(--gray-50); border-radius: 10px; border: 1px solid var(--gray-200);
+    }
+    .doctor-tab {
+      padding: 8px 16px; border-radius: 8px; border: none;
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 600;
+      cursor: pointer; background: transparent; color: var(--gray-600);
+      transition: all 0.16s; display: flex; align-items: center; gap: 6px;
+    }
+    .doctor-tab:hover { background: white; color: var(--gray-800); }
+    .doctor-tab.active {
+      background: white; color: #0d6e6e;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .doctor-tab .tab-count {
+      background: var(--gray-200); color: var(--gray-600);
+      font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px;
+    }
+    .doctor-tab.active .tab-count { background: #ccfbf1; color: #0d6e6e; }
+
+    /* ── Doctor panel ── */
+    .doctor-panel {
+      background: white; border-radius: var(--radius);
+      box-shadow: 0 4px 16px rgba(15,52,96,0.06);
+      margin-bottom: 24px; overflow: hidden;
+      transition: all 0.2s;
+    }
+    .doctor-panel.hidden-panel { display: none; }
+    .dp-header {
+      padding: 18px 22px; border-bottom: 1px solid var(--gray-100);
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+    }
+    .dp-header h3 { font-size: 16px; font-weight: 700; color: var(--gray-900); margin: 0; }
+    .dp-header .dp-spec { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+    .dp-header-stats {
+      display: flex; gap: 14px; font-size: 12px; font-weight: 600;
+    }
+    .dp-stat { display: flex; align-items: center; gap: 5px; }
+    .dp-stat-dot { width: 8px; height: 8px; border-radius: 50%; }
+    .dp-stat-dot.waiting { background: #eab308; }
+    .dp-stat-dot.called  { background: #3b82f6; }
+    .dp-stat-dot.served  { background: #22c55e; }
+    .dp-stat-dot.skipped { background: #ef4444; }
+
+    /* Sub-section labels */
+    .sub-header {
+      padding: 12px 22px 8px; font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--gray-400);
+      display: flex; align-items: center; gap: 8px;
+      border-top: 1px solid var(--gray-100);
+    }
+    .sub-header:first-of-type { border-top: none; }
+    .sub-header svg { width: 14px; height: 14px; }
+
+    /* ── Scheduled appointments table ── */
+    .sched-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .sched-table th {
+      text-align: left; padding: 8px 22px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em; color: var(--gray-400);
+      background: var(--gray-50);
+    }
+    .sched-table td { padding: 10px 22px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+    .sched-table tr:last-child td { border-bottom: none; }
+    .sched-table .sched-name { font-weight: 600; color: var(--gray-800); }
+    .sched-table .sched-time { color: var(--gray-500); font-size: 12px; }
+    .sched-table .sched-status { font-size: 11px; }
+    .checkin-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 5px 14px; border-radius: 6px; border: none;
+      background: linear-gradient(135deg, #0d9488, #0d6e6e); color: white;
+      font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 700;
+      cursor: pointer; transition: all 0.16s;
+    }
+    .checkin-btn:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(13,148,136,0.35); }
+    .checkin-btn svg { width: 13px; height: 13px; }
+    .checked-label {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 11px; font-weight: 700; color: #0d9488;
+    }
+    .checked-label svg { width: 13px; height: 13px; }
+
+    /* ── Queue cards grid ── */
+    .queue-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; padding: 14px 22px 18px; }
+    .queue-card {
+      border: 1px solid var(--gray-200); border-radius: 10px; padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 8px; transition: all 0.18s;
+    }
+    .queue-card:hover { box-shadow: 0 3px 12px rgba(15,52,96,0.07); }
+    .queue-card.waiting { border-left: 4px solid #eab308; }
+    .queue-card.called  { border-left: 4px solid #3b82f6; background: #eff6ff; }
+    .queue-card.served  { border-left: 4px solid #22c55e; opacity: 0.6; }
+    .queue-card.skipped { border-left: 4px solid #ef4444; opacity: 0.6; }
+
+    .qc-top { display: flex; justify-content: space-between; align-items: center; }
+    .qc-token { font-weight: 800; font-size: 20px; color: var(--gray-900); }
+    .qc-name { font-weight: 600; font-size: 13px; color: var(--gray-700); }
+    .qc-actions { display: flex; gap: 6px; margin-top: auto; }
+    .qc-actions form { display: inline; flex: 1; }
+    .qc-actions button { width: 100%; padding: 6px; font-size: 11px; }
+
+    .qc-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 20px;
+      font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .qc-badge.waiting { background: #fef9c3; color: #92400e; }
+    .qc-badge.called  { background: #dbeafe; color: #1e40af; }
+    .qc-badge.served  { background: #dcfce7; color: #166534; }
+    .qc-badge.skipped { background: #fee2e2; color: #991b1b; }
+
+    /* ── Walk-in form ── */
+    .walkin-section { padding: 14px 22px 18px; }
+    .walkin-form {
+      display: flex; gap: 8px; align-items: center; background: #f9fbfb;
+      padding: 12px; border-radius: 10px; border: 1px dashed var(--gray-300);
+    }
+    .walkin-form input {
+      flex: 1; padding: 8px 12px; font-size: 13px;
+      border: 1px solid var(--gray-200); border-radius: 6px;
+      font-family: 'DM Sans', sans-serif;
+    }
+    .walkin-form button { padding: 8px 16px; font-size: 13px; white-space: nowrap; }
+    .walkin-form .walkin-icon { display: flex; color: var(--gray-400); }
+    .walkin-form .walkin-icon svg { width: 18px; height: 18px; }
+
+    .no-entries-msg {
+      padding: 18px 22px; color: var(--gray-400); font-size: 13px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .no-entries-msg svg { width: 16px; height: 16px; }
+
+    /* ── Refresh indicator ── */
+    .refresh-bar {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 11px; font-weight: 600; color: var(--gray-400);
+      margin-bottom: 18px;
+    }
+    .refresh-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: #22c55e;
+      animation: refreshBlink 2s ease infinite;
+    }
+    @keyframes refreshBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    @media (max-width: 768px) {
+      .summary-stats { grid-template-columns: repeat(2, 1fr); }
+      .queue-grid { grid-template-columns: 1fr; }
+      .walkin-form { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-wrap"><%- icon('hospital') %></div>
+    <span class="brand-name">MediFlow</span>
+  </div>
+
+  <div class="sidebar-section-label">Reception</div>
+  <nav>
+    <a href="/receptionist">
+      <span class="nav-icon"><%- icon('dashboard') %></span> Dashboard
+    </a>
+    <a href="/receptionist/queue" class="active">
+      <span class="nav-icon"><%- icon('queue') %></span> Live Queue
+    </a>
+    <a href="/receptionist/appointments">
+      <span class="nav-icon"><%- icon('appointments') %></span> Manage Appointments
+    </a>
+    <a href="/receptionist/patients">
+      <span class="nav-icon"><%- icon('patients') %></span> Patients
+    </a>
+    <a href="/receptionist/add-patient">
+      <span class="nav-icon"><%- icon('addpatient') %></span> Add Patient
+    </a>
+    <a href="/receptionist/doctors">
+      <span class="nav-icon"><%- icon('doctor') %></span> Doctors
+    </a>
+    <a href="/receptionist/report">
+      <span class="nav-icon"><%- icon('report') %></span> Daily Report
+    </a>
+  </nav>
+
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-divider"></div>
+
+  <% if (typeof curruser !== 'undefined' && curruser) { %>
+  <div class="sidebar-user">
+    <div class="avatar"><%= curruser.username[0].toUpperCase() %></div>
+    <div>
+      <div class="user-name"><%= curruser.username %></div>
+      <div class="user-role"><%= curruser.role %></div>
+    </div>
+  </div>
+  <% } %>
+  <form action="/logout" method="GET">
+    <button class="logout-btn"><%- icon('logout') %> Logout</button>
+  </form>
+</aside>
+
+<main class="main">
+
+  <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+    <div class="flash flash-success"><%- icon('success') %> <%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+    <div class="flash flash-error"><%- icon('warning') %> <%= error %></div>
+  <% } %>
+
+  <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+    <div>
+      <h1>Live Queue Management</h1>
+      <p>Manage walk-ins, check in appointments, and control queue flow per doctor.</p>
+    </div>
+
+    <div style="background:white; padding:12px 18px; border-radius:var(--radius); border:1px solid var(--gray-200); display:flex; align-items:center; gap:12px;">
+      <span style="font-size:12px; font-weight:600; color:var(--gray-500);">SELECT DATE</span>
+      <form action="/receptionist/queue" method="GET" style="display:flex; gap:8px;">
+        <input type="date" name="date" class="form-control" style="width:140px; padding:6px 12px; font-size:13px;" value="<%= dateParam %>">
+        <button type="submit" class="btn btn-primary" style="padding:6px 14px; font-size:13px;">View</button>
+      </form>
+    </div>
+  </div>
+
+  <%
+    // Pre-compute stats
+    let totalScheduled = appointments ? appointments.length : 0;
+    let totalCheckedIn = 0;
+    let totalWaiting = 0;
+    let totalServed = 0;
+
+    if (queueEntries) {
+      queueEntries.forEach(q => {
+        if (q.status === 'waiting') totalWaiting++;
+        if (q.status === 'served') totalServed++;
+      });
+      totalCheckedIn = queueEntries.length;
+    }
+  %>
+
+  <!-- ═══════════ SUMMARY STATS ═══════════ -->
+  <div class="summary-stats">
+    <div class="summary-stat">
+      <div class="ss-icon blue"><%- icon('calendar') %></div>
+      <div>
+        <div class="ss-value" id="stat-scheduled"><%= totalScheduled %></div>
+        <div class="ss-label">Scheduled</div>
+      </div>
+    </div>
+    <div class="summary-stat">
+      <div class="ss-icon teal"><%- icon('check') %></div>
+      <div>
+        <div class="ss-value" id="stat-checkedin"><%= totalCheckedIn %></div>
+        <div class="ss-label">Checked In</div>
+      </div>
+    </div>
+    <div class="summary-stat">
+      <div class="ss-icon yellow"><%- icon('clock') %></div>
+      <div>
+        <div class="ss-value" id="stat-waiting"><%= totalWaiting %></div>
+        <div class="ss-label">Waiting</div>
+      </div>
+    </div>
+    <div class="summary-stat">
+      <div class="ss-icon green"><%- icon('success') %></div>
+      <div>
+        <div class="ss-value" id="stat-served"><%= totalServed %></div>
+        <div class="ss-label">Served Today</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ REFRESH BAR ═══════════ -->
+  <div class="refresh-bar">
+    <span class="refresh-dot"></span>
+    Auto-refreshing stats every 15s &middot; <span id="last-refresh">Just now</span>
+  </div>
+
+  <!-- ═══════════ DOCTOR FILTER TABS ═══════════ -->
+  <% if (doctors && doctors.length > 0) { %>
+    <div class="doctor-tabs" id="doctorTabs">
+      <button class="doctor-tab active" data-doctor="all">
+        All Doctors
+        <span class="tab-count"><%= doctors.length %></span>
+      </button>
+      <% doctors.forEach(doc => {
+        const docQueueCount = queueEntries ? queueEntries.filter(q => q.doctor && q.doctor._id.toString() === doc._id.toString()).length : 0;
+      %>
+        <button class="doctor-tab" data-doctor="<%= doc._id %>">
+          Dr. <%= doc.name %>
+          <% if (docQueueCount > 0) { %>
+            <span class="tab-count"><%= docQueueCount %></span>
+          <% } %>
+        </button>
+      <% }) %>
+    </div>
+
+    <!-- ═══════════ PER-DOCTOR PANELS ═══════════ -->
+    <% doctors.forEach(doc => {
+      const docQueue = queueEntries ? queueEntries.filter(q => q.doctor && q.doctor._id.toString() === doc._id.toString()) : [];
+      const docAppts = appointments ? appointments.filter(a => a.doctor && a.doctor._id.toString() === doc._id.toString()) : [];
+      const waitingCount = docQueue.filter(q => q.status === 'waiting').length;
+      const calledCount = docQueue.filter(q => q.status === 'called').length;
+      const servedCount = docQueue.filter(q => q.status === 'served').length;
+      const skippedCount = docQueue.filter(q => q.status === 'skipped').length;
+    %>
+      <div class="doctor-panel" data-panel="<%= doc._id %>">
+        <div class="dp-header">
+          <div>
+            <h3>Dr. <%= doc.name %></h3>
+            <div class="dp-spec"><%= doc.specialization %></div>
+          </div>
+          <div class="dp-header-stats">
+            <div class="dp-stat"><span class="dp-stat-dot waiting"></span> <%= waitingCount %> Waiting</div>
+            <div class="dp-stat"><span class="dp-stat-dot called"></span> <%= calledCount %> Called</div>
+            <div class="dp-stat"><span class="dp-stat-dot served"></span> <%= servedCount %> Served</div>
+            <% if (skippedCount > 0) { %>
+              <div class="dp-stat"><span class="dp-stat-dot skipped"></span> <%= skippedCount %> Skipped</div>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Scheduled Appointments -->
+        <% if (docAppts.length > 0) { %>
+          <div class="sub-header"><%- icon('calendar') %> Scheduled Appointments (<%= docAppts.length %>)</div>
+          <table class="sched-table">
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Time Slot</th>
+                <th>Status</th>
+                <th style="text-align:right;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% docAppts.forEach(appt => {
+                const isQueued = queuedAppointmentIds && queuedAppointmentIds.has(appt._id.toString());
+              %>
+              <tr>
+                <td class="sched-name"><%= appt.user ? (appt.user.fullName || appt.user.username) : 'Unknown' %></td>
+                <td class="sched-time"><%= appt.timeSlot %></td>
+                <td>
+                  <span class="badge badge-<%= (appt.status || 'Pending').toLowerCase() === 'confirmed' ? 'confirmed' : 'pending' %>">
+                    <%= appt.status || 'Pending' %>
+                  </span>
+                </td>
+                <td style="text-align:right;">
+                  <% if (isQueued) { %>
+                    <span class="checked-label"><%- icon('check') %> Checked In</span>
+                  <% } else { %>
+                    <form action="/receptionist/queue/checkin/<%= appt._id %>" method="POST" style="display:inline;">
+                      <button type="submit" class="checkin-btn"><%- icon('plus') %> Check In</button>
+                    </form>
+                  <% } %>
+                </td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        <% } %>
+
+        <!-- Live Queue -->
+        <div class="sub-header"><%- icon('queue') %> Live Queue (<%= docQueue.length %> tokens)</div>
+        <% if (docQueue.length === 0) { %>
+          <div class="no-entries-msg"><%- icon('inbox') %> No tokens generated for this doctor yet.</div>
+        <% } else { %>
+          <div class="queue-grid">
+            <% docQueue.forEach(entry => { %>
+              <div class="queue-card <%= entry.status %>">
+                <div class="qc-top">
+                  <div class="qc-token">#<%= entry.tokenNumber %></div>
+                  <span class="qc-badge <%= entry.status %>"><%= entry.status.toUpperCase() %></span>
+                </div>
+                <div class="qc-name"><%= entry.patientName || 'Walk-in' %></div>
+
+                <div class="qc-actions">
+                  <% if (entry.status === 'waiting') { %>
+                    <form action="/receptionist/queue/<%= entry._id %>/call" method="POST">
+                      <button class="btn btn-primary btn-sm" style="width:100%;">Call</button>
+                    </form>
+                    <form action="/receptionist/queue/<%= entry._id %>/skip" method="POST">
+                      <button class="btn btn-danger btn-sm" style="width:100%;">Skip</button>
+                    </form>
+                  <% } else if (entry.status === 'called') { %>
+                    <form action="/receptionist/queue/<%= entry._id %>/served" method="POST">
+                      <button class="btn btn-success btn-sm" style="width:100%;">Mark Served</button>
+                    </form>
+                    <form action="/receptionist/queue/<%= entry._id %>/skip" method="POST">
+                      <button class="btn btn-danger btn-sm" style="width:100%;">Skip</button>
+                    </form>
+                  <% } else { %>
+                    <div style="font-size:11px; color:var(--gray-400); width:100%; text-align:center;">Completed</div>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+
+        <!-- Walk-in Form -->
+        <div class="walkin-section">
+          <form action="/receptionist/queue/walkin" method="POST" class="walkin-form">
+            <input type="hidden" name="doctor" value="<%= doc._id %>">
+            <input type="hidden" name="date" value="<%= dateParam %>">
+            <div class="walkin-icon"><%- icon('addpatient') %></div>
+            <input type="text" name="patientName" placeholder="Patient Name (Walk-in)" required>
+            <button type="submit" class="btn btn-ghost">Add Walk-in Token</button>
+          </form>
+        </div>
+      </div>
+    <% }) %>
+
+  <% } else { %>
+    <div class="empty-state">
+      <div class="empty-icon"><%- icon('doctor') %></div>
+      <h3>No Doctors Found</h3>
+      <p>Add doctors to manage their queues.</p>
+    </div>
+  <% } %>
+
+</main>
+
+<script>
+  // ── Doctor filter tabs ─────────────────────────────────
+  let activeDocFilter = 'all';
+  document.querySelectorAll('.doctor-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.doctor-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      activeDocFilter = tab.dataset.doctor;
+      applyDoctorFilter();
+    });
+  });
+
+  function applyDoctorFilter() {
+    document.querySelectorAll('.doctor-panel').forEach(panel => {
+      if (activeDocFilter === 'all' || panel.dataset.panel === activeDocFilter) {
+        panel.classList.remove('hidden-panel');
+      } else {
+        panel.classList.add('hidden-panel');
+      }
+    });
+  }
+
+  // ── Full live refresh via AJAX ─────────────────────────
+  let refreshCounter = 0;
+  const dateParam = '<%= dateParam %>';
+
+  function refreshQueue() {
+    fetch(`/api/queue/live-data?date=${dateParam}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) return;
+
+        // Update summary stats
+        document.getElementById('stat-waiting').textContent = data.totalWaiting;
+        document.getElementById('stat-served').textContent = data.totalServed;
+        document.getElementById('stat-checkedin').textContent = data.totalCheckedIn;
+
+        // Update per-doctor panels
+        data.doctors.forEach(doc => {
+          const panel = document.querySelector(`[data-panel="${doc._id}"]`);
+          if (!panel) return;
+
+          // Update header stats
+          const headerStats = panel.querySelector('.dp-header-stats');
+          if (headerStats) {
+            let statsHtml = `<div class="dp-stat"><span class="dp-stat-dot waiting"></span> ${doc.waitingCount} Waiting</div>`;
+            statsHtml += `<div class="dp-stat"><span class="dp-stat-dot called"></span> ${doc.calledCount} Called</div>`;
+            statsHtml += `<div class="dp-stat"><span class="dp-stat-dot served"></span> ${doc.servedCount} Served</div>`;
+            if (doc.skippedCount > 0) {
+              statsHtml += `<div class="dp-stat"><span class="dp-stat-dot skipped"></span> ${doc.skippedCount} Skipped</div>`;
+            }
+            headerStats.innerHTML = statsHtml;
+          }
+
+          // Rebuild queue grid
+          const queueSubHeader = panel.querySelectorAll('.sub-header')[panel.querySelectorAll('.sub-header').length > 1 ? 1 : 0];
+          const oldGrid = panel.querySelector('.queue-grid');
+          const oldNoMsg = panel.querySelector('.no-entries-msg');
+
+          // Find the sub-header for "Live Queue"
+          let liveQueueHeader = null;
+          panel.querySelectorAll('.sub-header').forEach(sh => {
+            if (sh.textContent.includes('Live Queue')) liveQueueHeader = sh;
+          });
+
+          if (liveQueueHeader) {
+            liveQueueHeader.innerHTML = `<%- icon('queue') %> Live Queue (${doc.queueEntries.length} tokens)`;
+          }
+
+          if (oldGrid) oldGrid.remove();
+          if (oldNoMsg) oldNoMsg.remove();
+
+          const insertBefore = panel.querySelector('.walkin-section');
+
+          if (doc.queueEntries.length === 0) {
+            const noMsg = document.createElement('div');
+            noMsg.className = 'no-entries-msg';
+            noMsg.innerHTML = `<%- icon('inbox') %> No tokens generated for this doctor yet.`;
+            insertBefore.parentNode.insertBefore(noMsg, insertBefore);
+          } else {
+            const grid = document.createElement('div');
+            grid.className = 'queue-grid';
+
+            doc.queueEntries.forEach(entry => {
+              const card = document.createElement('div');
+              card.className = `queue-card ${entry.status}`;
+
+              let actionsHtml = '';
+              if (entry.status === 'waiting') {
+                actionsHtml = `
+                  <form action="/receptionist/queue/${entry._id}/call" method="POST">
+                    <button class="btn btn-primary btn-sm" style="width:100%;">Call</button>
+                  </form>
+                  <form action="/receptionist/queue/${entry._id}/skip" method="POST">
+                    <button class="btn btn-danger btn-sm" style="width:100%;">Skip</button>
+                  </form>`;
+              } else if (entry.status === 'called') {
+                actionsHtml = `
+                  <form action="/receptionist/queue/${entry._id}/served" method="POST">
+                    <button class="btn btn-success btn-sm" style="width:100%;">Mark Served</button>
+                  </form>
+                  <form action="/receptionist/queue/${entry._id}/skip" method="POST">
+                    <button class="btn btn-danger btn-sm" style="width:100%;">Skip</button>
+                  </form>`;
+              } else {
+                actionsHtml = `<div style="font-size:11px; color:var(--gray-400); width:100%; text-align:center;">Completed</div>`;
+              }
+
+              card.innerHTML = `
+                <div class="qc-top">
+                  <div class="qc-token">#${entry.tokenNumber}</div>
+                  <span class="qc-badge ${entry.status}">${entry.status.toUpperCase()}</span>
+                </div>
+                <div class="qc-name">${entry.patientName || 'Walk-in'}</div>
+                <div class="qc-actions">${actionsHtml}</div>`;
+
+              grid.appendChild(card);
+            });
+
+            insertBefore.parentNode.insertBefore(grid, insertBefore);
+          }
+
+          // Update scheduled appointments check-in status
+          const schedTable = panel.querySelector('.sched-table tbody');
+          if (schedTable && doc.scheduledAppts) {
+            doc.scheduledAppts.forEach(appt => {
+              const rows = schedTable.querySelectorAll('tr');
+              rows.forEach(row => {
+                const actionCell = row.querySelector('td:last-child');
+                if (!actionCell) return;
+                const checkinForm = actionCell.querySelector('form[action*="checkin/' + appt._id + '"]');
+                if (checkinForm && appt.isQueued) {
+                  checkinForm.innerHTML = `<span class="checked-label"><%- icon('check') %> Checked In</span>`;
+                  checkinForm.outerHTML = checkinForm.innerHTML;
+                }
+              });
+            });
+          }
+        });
+
+        // Update doctor tab counts
+        data.doctors.forEach(doc => {
+          const tab = document.querySelector(`.doctor-tab[data-doctor="${doc._id}"]`);
+          if (!tab) return;
+          let countEl = tab.querySelector('.tab-count');
+          const totalQueue = doc.queueEntries.length;
+          if (totalQueue > 0) {
+            if (!countEl) {
+              countEl = document.createElement('span');
+              countEl.className = 'tab-count';
+              tab.appendChild(countEl);
+            }
+            countEl.textContent = totalQueue;
+          } else if (countEl) {
+            countEl.remove();
+          }
+        });
+
+        // Reapply current doctor filter
+        applyDoctorFilter();
+
+        refreshCounter = 0;
+        document.getElementById('last-refresh').textContent = 'Just now';
+      })
+      .catch(err => console.log('Refresh error:', err));
+  }
+
+  // Poll every 15 seconds
+  setInterval(refreshQueue, 15000);
+
+  // Count up the "ago" timer
+  setInterval(() => {
+    refreshCounter++;
+    document.getElementById('last-refresh').textContent = refreshCounter + 's ago';
+  }, 1000);
+
+  // ── Animate stat cards on load ─────────────────────────
+  document.querySelectorAll('.summary-stat').forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(12px)';
+    card.style.transition = `opacity 0.3s ease ${i * 70}ms, transform 0.3s ease ${i * 70}ms`;
+    requestAnimationFrame(() => { card.style.opacity = '1'; card.style.transform = 'translateY(0)'; });
+  });
+</script>
+
+</body>
+</html>

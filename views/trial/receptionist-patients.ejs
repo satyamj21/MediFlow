@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>MediFlow – Patient List</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/mediflow.css">
+  <style>
+    .sidebar { background: linear-gradient(175deg, #0d6e6e 0%, #0e9090 100%); }
+    .sidebar nav a.active { background: rgba(255,255,255,0.22); }
+    .blood-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 700;
+      background: #fee2e2; color: #991b1b;
+    }
+    .gender-badge {
+      display: inline-block; padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 600;
+      background: var(--blue-pale); color: var(--blue-dark);
+    }
+    .patient-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, #0e9090, #0d6e6e);
+      color: white; display: inline-flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; flex-shrink: 0;
+    }
+    .patient-cell { display: flex; align-items: center; gap: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-wrap"><%- icon('hospital') %></div>
+    <span class="brand-name">MediFlow</span>
+  </div>
+  <div class="sidebar-section-label">Reception</div>
+  <nav>
+    <a href="/receptionist"><span class="nav-icon"><%- icon('dashboard') %></span> Dashboard</a>
+    <a href="/receptionist/queue"><span class="nav-icon"><%- icon('queue') %></span> Live Queue</a>
+    <a href="/receptionist/appointments"><span class="nav-icon"><%- icon('appointments') %></span> Manage Appointments</a>
+    <a href="/receptionist/patients" class="active"><span class="nav-icon"><%- icon('patients') %></span> Patients</a>
+    <a href="/receptionist/add-patient"><span class="nav-icon"><%- icon('addpatient') %></span> Add Patient</a>
+    <a href="/receptionist/doctors"><span class="nav-icon"><%- icon('doctor') %></span> Doctors</a>
+    <a href="/receptionist/report"><span class="nav-icon"><%- icon('report') %></span> Daily Report</a>
+  </nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-divider"></div>
+  <% if (typeof curruser !== 'undefined' && curruser) { %>
+  <div class="sidebar-user">
+    <div class="avatar"><%= curruser.username[0].toUpperCase() %></div>
+    <div>
+      <div class="user-name"><%= curruser.username %></div>
+      <div class="user-role"><%= curruser.role %></div>
+    </div>
+  </div>
+  <% } %>
+  <form action="/logout" method="GET">
+    <button class="logout-btn"><%- icon('logout') %> Logout</button>
+  </form>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+    <div class="flash flash-success"><%- icon('success') %> <%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+    <div class="flash flash-error"><%- icon('warning') %> <%= error %></div>
+  <% } %>
+
+  <div class="page-header" style="display:flex; align-items:center; justify-content:space-between;">
+    <div>
+      <h1>Patient List</h1>
+      <p>All registered patient accounts — click Edit to update details.</p>
+    </div>
+    <a href="/receptionist/add-patient" class="btn btn-primary btn-lg"><%- icon('plus') %> Add Patient</a>
+  </div>
+
+  <div class="card">
+    <div class="card-header-row">
+      <div>
+        <h2>All Patients</h2>
+        <p>Total: <strong><%= patients.length %></strong> patient(s)</p>
+      </div>
+      <div class="search-bar" style="width:260px; margin:0;">
+        <div class="search-input-wrap">
+          <%- icon('search') %>
+          <input type="text" id="patientSearch" placeholder="Search by name or username…">
+        </div>
+      </div>
+    </div>
+
+    <% if (!patients || patients.length === 0) { %>
+      <div class="empty-state">
+        <div class="empty-icon"><%- icon('patients') %></div>
+        <h3>No patients found</h3>
+        <p>No patient accounts exist yet. <a href="/receptionist/add-patient" style="color:var(--blue-mid);">Add the first patient.</a></p>
+      </div>
+    <% } else { %>
+    <div class="table-wrap">
+      <table id="patientsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Patient</th>
+            <th>Gender / Age</th>
+            <th>Blood Group</th>
+            <th>Phone</th>
+            <th>Allergies</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% patients.forEach((p, i) => { %>
+          <tr data-search="<%= (p.username || '').toLowerCase() %> <%= (p.fullName || '').toLowerCase() %> <%= (p.email || '').toLowerCase() %>">
+            <td style="color:var(--gray-400); font-size:11.5px;"><%= i+1 %></td>
+            <td>
+              <div class="patient-cell">
+                <div class="patient-avatar"><%= (p.fullName || p.username || '?')[0].toUpperCase() %></div>
+                <div>
+                  <div class="td-primary"><%= p.fullName || p.username %></div>
+                  <div class="td-sub"><%= p.email %></div>
+                  <% if (p.fullName && p.username) { %>
+                    <div class="td-sub">@<%= p.username %></div>
+                  <% } %>
+                </div>
+              </div>
+            </td>
+            <td>
+              <% if (p.gender) { %><span class="gender-badge"><%= p.gender %></span><% } %>
+              <% if (p.age) { %><div class="td-sub" style="margin-top:4px;"><%= p.age %> yrs</div><% } %>
+              <% if (!p.gender && !p.age) { %><span style="color:var(--gray-300); font-size:12px;">—</span><% } %>
+            </td>
+            <td>
+              <% if (p.bloodGroup) { %>
+                <span class="blood-badge"><%= p.bloodGroup %></span>
+              <% } else { %>
+                <span style="color:var(--gray-300); font-size:12px;">—</span>
+              <% } %>
+            </td>
+            <td>
+              <% if (p.phone) { %>
+                <span style="font-size:12.5px; color:var(--gray-700);"><%= p.phone %></span>
+              <% } else { %>
+                <span style="color:var(--gray-300); font-size:12px;">—</span>
+              <% } %>
+            </td>
+            <td>
+              <% if (p.allergies) { %>
+                <span style="font-size:12px; color:#92400e; background:var(--yellow-pale); padding:2px 7px; border-radius:5px;"><%= p.allergies %></span>
+              <% } else { %>
+                <span style="color:var(--gray-300); font-size:12px;">None listed</span>
+              <% } %>
+            </td>
+            <td>
+              <a href="/receptionist/patients/<%= p._id %>/edit" class="btn btn-warning btn-sm"><%- icon('edit') %> Edit</a>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+
+</main>
+
+<script>
+  document.getElementById('patientSearch').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('#patientsTable tbody tr').forEach(row => {
+      row.classList.toggle('hidden', q && !row.dataset.search.includes(q));
+    });
+  });
+
+  // Animate rows on load
+  document.querySelectorAll('#patientsTable tbody tr').forEach((row, i) => {
+    row.style.animationDelay = `${i * 30}ms`;
+    row.classList.add('row-fade-in');
+  });
+</script>
+</body>
+</html>

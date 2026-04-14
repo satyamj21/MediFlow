@@ -8,6 +8,9 @@ const passport = require("passport");
 const User = require("./modules/user");
 const Doctor = require("./modules/doctor");
 const Appointment = require("./modules/appointment");
+const DailyReport = require("./modules/dailyReport");
+const Emergency = require("./modules/emergency");
+const QueueEntry = require("./modules/queueEntry");
 const flash = require("connect-flash");
 
 app.set("view engine", "ejs");
@@ -61,6 +64,10 @@ app.locals.icon = function(name) {
     plus:         `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
     back:         `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
     search:       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>`,
+    emergency:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
+    patients:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+    profile:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+    stethoscope:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>`,
   };
   return i[name] || "";
 };
@@ -108,6 +115,13 @@ app.get("/signup", (req, res) => {
 app.post("/signup", async (req, res) => {
   try {
     const { username, email, password, role } = req.body;
+
+    const passRegex = /^(?=.*[A-Z])(?=.*[@#%\^&\*\(\)!]).{9,}$/;
+    if (!passRegex.test(password)) {
+      req.flash("error", "Password must be >8 characters, with at least 1 uppercase and 1 special character (@ # % ^ & * ( ) !).");
+      return res.redirect("/signup");
+    }
+
     const newuser = new User({ email, username, role });
     await User.register(newuser, password);
     req.flash("success", "Account created! Please log in.");
@@ -159,11 +173,263 @@ app.get("/logout", (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════
+//  EMERGENCY – public polling endpoint (patient side JS polls this)
+// ════════════════════════════════════════════════════════════
+
+app.get("/api/emergency/status", async (req, res) => {
+  try {
+    const emergency = await Emergency.findOne();
+    if (!emergency) return res.json({ active: false, triggeredAt: null, message: "" });
+    res.json({ active: emergency.active, triggeredAt: emergency.triggeredAt, message: emergency.message });
+  } catch (err) {
+    res.json({ active: false, triggeredAt: null, message: "" });
+  }
+});
+
+// ════════════════════════════════════════════════════════════
 //  USER ROUTES
 // ════════════════════════════════════════════════════════════
 
 app.get("/user", isLoggedIn, (req, res) => {
   res.render("trial/user");
+});
+
+// ── Patient Profile (self-view) ───────────────────────────
+app.get("/user/profile", isLoggedIn, async (req, res) => {
+  try {
+    const patient = await User.findById(req.user._id);
+    res.render("trial/user-profile", { patient });
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Could not load your profile.");
+    res.redirect("/user");
+  }
+});
+
+// ── Patient Profile (edit) ────────────────────────────────
+app.get("/user/profile/edit", isLoggedIn, async (req, res) => {
+  try {
+    const patient = await User.findById(req.user._id);
+    res.render("trial/user-edit-profile", { patient });
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Could not load profile editor.");
+    res.redirect("/user/profile");
+  }
+});
+
+app.post("/user/profile/edit", isLoggedIn, async (req, res) => {
+  try {
+    const {
+      fullName, phone, emergencyContactName, emergencyContactPhone,
+      bloodGroup, allergies, gender, age, email
+    } = req.body;
+
+    await User.findByIdAndUpdate(req.user._id, {
+      fullName: fullName || "",
+      phone: phone || "",
+      emergencyContactName: emergencyContactName || "",
+      emergencyContactPhone: emergencyContactPhone || "",
+      bloodGroup: bloodGroup || "",
+      allergies: allergies || "",
+      gender: gender || "",
+      age: age ? parseInt(age) : null,
+      email: email || "",
+    });
+    
+    req.flash("success", "Your profile has been updated successfully.");
+    res.redirect("/user/profile");
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Could not update profile: " + err.message);
+    res.redirect("/user/profile/edit");
+  }
+});
+
+
+// ── Live Queue (Patient) ────────────────────────────────────────
+app.get("/user/queue", isLoggedIn, async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const todayStart = new Date(today + "T00:00:00.000Z");
+
+    // All upcoming appointments (today and future)
+    const appointments = await Appointment.find({
+      user: req.user._id,
+      date: { $gte: todayStart },
+      status: { $ne: "Cancelled" }
+    }).populate("doctor").sort({ date: 1 });
+
+    // Today's queue entries for this patient
+    const todayEntries = await QueueEntry.find({
+      patient: req.user._id,
+      date: today
+    }).populate("doctor").sort({ tokenNumber: 1 });
+
+    res.render("trial/user-queue", { appointments, todayEntries, today });
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Error loading live queue.");
+    res.redirect("/user");
+  }
+});
+
+// ── Polling endpoint for queue status ─────────────────────
+app.get("/api/queue/status", async (req, res) => {
+  try {
+    const { date, doctorId, patientId } = req.query;
+    if (!date || !doctorId || !patientId) return res.json({ error: "Missing parameters" });
+
+    const userEntry = await QueueEntry.findOne({ patient: patientId, date, doctor: doctorId }).sort({ createdAt: -1 });
+    if (!userEntry) return res.json({ error: "Not found" });
+
+    // Calculate position: how many are waiting before this token
+    let position = 0;
+    if (userEntry.status === "waiting") {
+      position = await QueueEntry.countDocuments({
+        doctor: doctorId,
+        date: date,
+        status: "waiting",
+        tokenNumber: { $lte: userEntry.tokenNumber }
+      });
+    }
+
+    const estimatedWaitMinutes = position > 0 ? (position - 1) * 10 : 0;
+
+    const calledEntry = await QueueEntry.findOne({ doctor: doctorId, date, status: "called" }).sort({ createdAt: -1 });
+    const calledToken = calledEntry ? calledEntry.tokenNumber : null;
+
+    const totalWaiting = await QueueEntry.countDocuments({ doctor: doctorId, date, status: "waiting" });
+    const totalServed  = await QueueEntry.countDocuments({ doctor: doctorId, date, status: "served" });
+
+    res.json({
+      tokenNumber: userEntry.tokenNumber,
+      status: userEntry.status,
+      position,
+      estimatedWaitMinutes,
+      calledToken,
+      totalWaiting,
+      totalServed
+    });
+  } catch (err) {
+    res.json({ error: "Server error" });
+  }
+});
+
+// ── Polling endpoint for receptionist: per-doctor queue stats ──
+app.get("/api/queue/doctor-summary", async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.json({ error: "Missing date" });
+
+    const doctors = await Doctor.find().sort({ name: 1 });
+    const summary = {};
+
+    for (const doc of doctors) {
+      const docId = doc._id.toString();
+      const waiting = await QueueEntry.countDocuments({ doctor: docId, date, status: "waiting" });
+      const called  = await QueueEntry.countDocuments({ doctor: docId, date, status: "called" });
+      const served  = await QueueEntry.countDocuments({ doctor: docId, date, status: "served" });
+      const skipped = await QueueEntry.countDocuments({ doctor: docId, date, status: "skipped" });
+
+      const calledEntry = await QueueEntry.findOne({ doctor: docId, date, status: "called" }).sort({ createdAt: -1 });
+
+      summary[docId] = {
+        waiting, called, served, skipped,
+        total: waiting + called + served + skipped,
+        calledToken: calledEntry ? calledEntry.tokenNumber : null,
+        calledPatient: calledEntry ? calledEntry.patientName : null
+      };
+    }
+
+    res.json({ summary });
+  } catch (err) {
+    res.json({ error: "Server error" });
+  }
+});
+
+// ── Full live-data endpoint for receptionist queue refresh ──
+app.get("/api/queue/live-data", async (req, res) => {
+  try {
+    const { date } = req.query;
+    if (!date) return res.json({ error: "Missing date" });
+
+    const doctors = await Doctor.find().sort({ name: 1 });
+
+    const startOfDay = new Date(date + "T00:00:00.000Z");
+    const endOfDay = new Date(date + "T23:59:59.999Z");
+
+    const allQueueEntries = await QueueEntry.find({ date })
+      .populate("doctor")
+      .populate("patient")
+      .populate("appointment")
+      .sort({ tokenNumber: 1 });
+
+    const allAppointments = await Appointment.find({
+      date: { $gte: startOfDay, $lte: endOfDay },
+      status: { $in: ["Confirmed", "Pending"] },
+    })
+      .populate("user")
+      .populate("doctor")
+      .sort({ timeSlot: 1 });
+
+    // Build a set of queued appointment IDs
+    const queuedAppointmentIds = new Set(
+      allQueueEntries
+        .filter(q => q.appointment)
+        .map(q => q.appointment._id.toString())
+    );
+
+    let totalWaiting = 0, totalServed = 0, totalCheckedIn = 0;
+
+    const doctorData = doctors.map(doc => {
+      const docId = doc._id.toString();
+      const docQueue = allQueueEntries.filter(q => q.doctor && q.doctor._id.toString() === docId);
+      const docAppts = allAppointments.filter(a => a.doctor && a.doctor._id.toString() === docId);
+
+      const waitingCount = docQueue.filter(q => q.status === "waiting").length;
+      const calledCount = docQueue.filter(q => q.status === "called").length;
+      const servedCount = docQueue.filter(q => q.status === "served").length;
+      const skippedCount = docQueue.filter(q => q.status === "skipped").length;
+
+      totalWaiting += waitingCount;
+      totalServed += servedCount;
+      totalCheckedIn += docQueue.length;
+
+      return {
+        _id: docId,
+        name: doc.name,
+        specialization: doc.specialization,
+        waitingCount,
+        calledCount,
+        servedCount,
+        skippedCount,
+        queueEntries: docQueue.map(q => ({
+          _id: q._id,
+          tokenNumber: q.tokenNumber,
+          status: q.status,
+          patientName: q.patientName || "Walk-in",
+        })),
+        scheduledAppts: docAppts.map(a => ({
+          _id: a._id,
+          patientName: a.user ? (a.user.fullName || a.user.username) : "Unknown",
+          timeSlot: a.timeSlot,
+          status: a.status,
+          isQueued: queuedAppointmentIds.has(a._id.toString()),
+        })),
+      };
+    });
+
+    res.json({
+      doctors: doctorData,
+      totalWaiting,
+      totalServed,
+      totalCheckedIn,
+    });
+  } catch (err) {
+    console.error(err);
+    res.json({ error: "Server error" });
+  }
 });
 
 // ── Book appointment ──────────────────────────────────────
@@ -189,7 +455,7 @@ app.post("/book", isLoggedIn, async (req, res) => {
     });
     await newAppointment.save();
     req.flash("success", "Appointment booked successfully! 🎉");
-    res.redirect("/appointments");           // ← redirect to appointments with flash
+    res.redirect("/appointments");
   } catch (err) {
     console.log(err);
     req.flash("error", "Error booking appointment. Please try again.");
@@ -215,7 +481,7 @@ app.get("/appointments", isLoggedIn, async (req, res) => {
 app.get("/reschedule/:id", isLoggedIn, async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id).populate("doctor");
-    const doctors     = await Doctor.find();         // ← FIX: pass doctors to template
+    const doctors     = await Doctor.find();
     res.render("trial/reschedule", { appointment, doctors });
   } catch (err) {
     console.log(err);
@@ -327,10 +593,38 @@ app.post("/receptionist/cancel/:id", isReceptionist, async (req, res) => {
 // ── Queue ─────────────────────────────────────────────────
 app.get("/receptionist/queue", isReceptionist, async (req, res) => {
   try {
-    const doctors = await Doctor.find();
-    // Queue stored in session for now (no separate model needed)
-    const queueEntries = req.session.queue || [];
-    res.render("trial/receptionist-queue", { doctors, queueEntries });
+    const today = new Date().toISOString().split("T")[0];
+    const dateParam = req.query.date || today;
+
+    const startOfDay = new Date(dateParam + "T00:00:00.000Z");
+    const endOfDay = new Date(dateParam + "T23:59:59.999Z");
+
+    // Scheduled appointments for this date
+    const appointments = await Appointment.find({
+      date: { $gte: startOfDay, $lte: endOfDay },
+      status: { $in: ["Confirmed", "Pending"] },
+    })
+      .populate("user")
+      .populate("doctor")
+      .sort({ timeSlot: 1 });
+
+    const doctors = await Doctor.find().sort({ name: 1 });
+    const queueEntries = await QueueEntry.find({ date: dateParam })
+      .populate("doctor")
+      .populate("patient")
+      .populate("appointment")
+      .sort({ tokenNumber: 1 });
+
+    // Build a set of appointment IDs that already have queue entries
+    const queuedAppointmentIds = new Set(
+      queueEntries
+        .filter(q => q.appointment)
+        .map(q => q.appointment._id.toString())
+    );
+
+    res.render("trial/receptionist-queue", {
+      doctors, queueEntries, dateParam, appointments, queuedAppointmentIds
+    });
   } catch (err) {
     console.log(err);
     req.flash("error", "Error loading queue.");
@@ -338,50 +632,128 @@ app.get("/receptionist/queue", isReceptionist, async (req, res) => {
   }
 });
 
-app.post("/receptionist/queue/add", isReceptionist, async (req, res) => {
+// ── Check-in: move appointment to live queue ────────────────
+app.post("/receptionist/queue/checkin/:id", isReceptionist, async (req, res) => {
   try {
-    const { patientName, doctor } = req.body;
-    if (!req.session.queue) req.session.queue = [];
-    const token = (req.session.queue.length > 0
-      ? Math.max(...req.session.queue.map(e => e.tokenNumber)) + 1
-      : 1);
-    let doctorObj = null;
-    if (doctor) {
-      doctorObj = await Doctor.findById(doctor);
+    const appt = await Appointment.findById(req.params.id).populate("user").populate("doctor");
+    if (!appt) {
+      req.flash("error", "Appointment not found.");
+      return res.redirect("/receptionist/queue");
     }
-    req.session.queue.push({
-      _id: Date.now().toString(),
-      tokenNumber: token,
-      patientName,
-      doctor: doctorObj,
-      createdAt: new Date()
+
+    const dateParam = appt.date.toISOString().split("T")[0];
+
+    // Check if already checked in
+    const existing = await QueueEntry.findOne({ appointment: appt._id });
+    if (existing) {
+      req.flash("error", "This appointment is already checked in.");
+      return res.redirect(`/receptionist/queue?date=${dateParam}`);
+    }
+
+    // Get next token number for this doctor on this date
+    const highestToken = await QueueEntry.findOne({
+      doctor: appt.doctor._id,
+      date: dateParam
+    }).sort({ tokenNumber: -1 });
+
+    const newToken = highestToken ? highestToken.tokenNumber + 1 : 1;
+
+    const newEntry = new QueueEntry({
+      appointment: appt._id,
+      patient: appt.user ? appt.user._id : null,
+      patientName: appt.user ? (appt.user.fullName || appt.user.username) : "Unknown",
+      doctor: appt.doctor._id,
+      date: dateParam,
+      tokenNumber: newToken,
+      status: "waiting"
     });
-    req.flash("success", `Token #${token} added for ${patientName}.`);
-    res.redirect("/receptionist/queue");
+    await newEntry.save();
+
+    // Mark appointment as Confirmed (patient has arrived)
+    await Appointment.findByIdAndUpdate(appt._id, { status: "Confirmed" });
+
+    req.flash("success", `Checked in! Token #${newToken} assigned to ${newEntry.patientName}.`);
+    res.redirect(`/receptionist/queue?date=${dateParam}`);
   } catch (err) {
     console.log(err);
-    req.flash("error", "Error adding to queue.");
+    req.flash("error", "Error checking in patient.");
     res.redirect("/receptionist/queue");
   }
 });
 
-app.post("/receptionist/queue/next", isReceptionist, (req, res) => {
-  if (!req.session.queue) req.session.queue = [];
-  if (req.session.queue.length > 0) {
-    const served = req.session.queue.shift();
-    req.flash("success", `Called token #${served.tokenNumber} – ${served.patientName}.`);
-  } else {
-    req.flash("error", "Queue is already empty.");
+app.post("/receptionist/queue/walkin", isReceptionist, async (req, res) => {
+  try {
+    const { patientName, doctor, date, timeSlot } = req.body;
+
+    // Create an appointment record for the walk-in
+    const walkinAppt = new Appointment({
+      doctor,
+      date: new Date(date + "T00:00:00.000Z"),
+      timeSlot: timeSlot || "Walk-in",
+      status: "Confirmed"
+    });
+    await walkinAppt.save();
+
+    // Get next token
+    const highestToken = await QueueEntry.findOne({ doctor, date }).sort({ tokenNumber: -1 });
+    const newToken = highestToken ? highestToken.tokenNumber + 1 : 1;
+
+    const newEntry = new QueueEntry({
+      appointment: walkinAppt._id,
+      patientName: patientName || "Walk-in",
+      doctor,
+      date,
+      tokenNumber: newToken,
+      status: "waiting"
+    });
+    await newEntry.save();
+
+    req.flash("success", `Walk-in Token #${newToken} added for ${newEntry.patientName}.`);
+    res.redirect(`/receptionist/queue?date=${date}`);
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Error adding walk-in to queue.");
+    res.redirect("/receptionist/queue");
   }
-  res.redirect("/receptionist/queue");
 });
 
-app.post("/receptionist/queue/remove/:id", isReceptionist, (req, res) => {
-  if (req.session.queue) {
-    req.session.queue = req.session.queue.filter(e => e._id !== req.params.id);
+app.post("/receptionist/queue/:id/call", isReceptionist, async (req, res) => {
+  try {
+    await QueueEntry.findByIdAndUpdate(req.params.id, { status: "called" });
+    const entry = await QueueEntry.findById(req.params.id);
+    req.flash("success", `Called token #${entry.tokenNumber}.`);
+    res.redirect(`/receptionist/queue?date=${entry.date}`);
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Error calling patient.");
+    res.redirect("back");
   }
-  req.flash("success", "Patient removed from queue.");
-  res.redirect("/receptionist/queue");
+});
+
+app.post("/receptionist/queue/:id/served", isReceptionist, async (req, res) => {
+  try {
+    await QueueEntry.findByIdAndUpdate(req.params.id, { status: "served" });
+    const entry = await QueueEntry.findById(req.params.id);
+    req.flash("success", `Token #${entry.tokenNumber} marked as served.`);
+    res.redirect(`/receptionist/queue?date=${entry.date}`);
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Error updating status.");
+    res.redirect("back");
+  }
+});
+
+app.post("/receptionist/queue/:id/skip", isReceptionist, async (req, res) => {
+  try {
+    await QueueEntry.findByIdAndUpdate(req.params.id, { status: "skipped" });
+    const entry = await QueueEntry.findById(req.params.id);
+    req.flash("success", `Token #${entry.tokenNumber} skipped.`);
+    res.redirect(`/receptionist/queue?date=${entry.date}`);
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Error skipping patient.");
+    res.redirect("back");
+  }
 });
 
 // ── Add patient ───────────────────────────────────────────
@@ -391,11 +763,35 @@ app.get("/receptionist/add-patient", isReceptionist, (req, res) => {
 
 app.post("/receptionist/add-patient", isReceptionist, async (req, res) => {
   try {
-    const { username, email, password } = req.body;
-    const newUser = new User({ email, username, role: "user" });
+    const {
+      username, email, password,
+      fullName, phone, emergencyContactName, emergencyContactPhone,
+      bloodGroup, allergies, gender, age
+    } = req.body;
+
+    const passRegex = /^(?=.*[A-Z])(?=.*[@#%\^&\*\(\)!]).{9,}$/;
+    if (!passRegex.test(password)) {
+      req.flash("error", "Password must be >8 characters, with at least 1 uppercase and 1 special character (@ # % ^ & * ( ) !).");
+      return res.redirect("/receptionist/add-patient");
+    }
+
+    const newUser = new User({
+      email,
+      username,
+      role: "user",
+      fullName: fullName || "",
+      phone: phone || "",
+      emergencyContactName: emergencyContactName || "",
+      emergencyContactPhone: emergencyContactPhone || "",
+      bloodGroup: bloodGroup || "",
+      allergies: allergies || "",
+      gender: gender || "",
+      age: age ? parseInt(age) : null,
+      addedByReceptionist: true,
+    });
     await User.register(newUser, password);
-    req.flash("success", `Patient account for "${username}" created successfully.`);
-    res.redirect("/receptionist/add-patient");
+    req.flash("success", `Patient "${username}" registered successfully.`);
+    res.redirect("/receptionist/patients");
   } catch (err) {
     if (err.name === "UserExistsError") {
       req.flash("error", "A user with that username already exists.");
@@ -406,17 +802,175 @@ app.post("/receptionist/add-patient", isReceptionist, async (req, res) => {
   }
 });
 
+// ── List patients ─────────────────────────────────────────
+app.get("/receptionist/patients", isReceptionist, async (req, res) => {
+  try {
+    const patients = await User.find({ role: "user" }).sort({ username: 1 });
+    res.render("trial/receptionist-patients", { patients });
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Could not load patients.");
+    res.redirect("/receptionist");
+  }
+});
+
+// ── Edit patient (form) ───────────────────────────────────
+app.get("/receptionist/patients/:id/edit", isReceptionist, async (req, res) => {
+  try {
+    const patient = await User.findById(req.params.id);
+    if (!patient || patient.role !== "user") {
+      req.flash("error", "Patient not found.");
+      return res.redirect("/receptionist/patients");
+    }
+    res.render("trial/receptionist-edit-patient", { patient });
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Could not load patient.");
+    res.redirect("/receptionist/patients");
+  }
+});
+
+// ── Edit patient (save) ───────────────────────────────────
+app.post("/receptionist/patients/:id/edit", isReceptionist, async (req, res) => {
+  try {
+    const {
+      fullName, phone, emergencyContactName, emergencyContactPhone,
+      bloodGroup, allergies, gender, age, email
+    } = req.body;
+
+    await User.findByIdAndUpdate(req.params.id, {
+      fullName: fullName || "",
+      phone: phone || "",
+      emergencyContactName: emergencyContactName || "",
+      emergencyContactPhone: emergencyContactPhone || "",
+      bloodGroup: bloodGroup || "",
+      allergies: allergies || "",
+      gender: gender || "",
+      age: age ? parseInt(age) : null,
+      email: email || "",
+    });
+    req.flash("success", "Patient details updated successfully.");
+    res.redirect("/receptionist/patients");
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Could not update patient: " + err.message);
+    res.redirect(`/receptionist/patients/${req.params.id}/edit`);
+  }
+});
+
+// ── Doctor listing (enhanced) ─────────────────────────────
+app.get("/receptionist/doctors", isReceptionist, async (req, res) => {
+  try {
+    const doctors = await Doctor.find().sort({ name: 1 });
+    res.render("trial/receptionist-doctors", { doctors });
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Could not load doctors.");
+    res.redirect("/receptionist");
+  }
+});
+
 // ── Daily report ──────────────────────────────────────────
 app.get("/receptionist/report", isReceptionist, async (req, res) => {
   try {
-    const appointments = await Appointment.find()
-      .populate("doctor")
-      .populate("user")
-      .sort({ date: 1 });
-    res.render("trial/receptionist-report", { appointments });
+    const today = new Date().toISOString().split("T")[0];
+    const dateParam = req.query.date || today;
+
+    const doctors = await Doctor.find().sort({ name: 1 });
+
+    // Get all DailyReport records for this date
+    const reportRecords = await DailyReport.find({ date: dateParam });
+
+    // Build a reportMap: doctorId -> expectedCount
+    const reportMap = {};
+    reportRecords.forEach(r => {
+      reportMap[r.doctor.toString()] = r.expectedCount;
+    });
+
+    // Count actual appointments per doctor for the selected date
+    const startOfDay = new Date(dateParam + "T00:00:00.000Z");
+    const endOfDay   = new Date(dateParam + "T23:59:59.999Z");
+
+    const appointments = await Appointment.find({
+      date: { $gte: startOfDay, $lte: endOfDay },
+      status: { $ne: "Cancelled" }
+    }).populate("doctor");
+
+    const actualMap = {};
+    appointments.forEach(appt => {
+      if (appt.doctor) {
+        const id = appt.doctor._id.toString();
+        actualMap[id] = (actualMap[id] || 0) + 1;
+      }
+    });
+
+    // Combine into report data
+    const reportData = doctors.map(doc => {
+      const id = doc._id.toString();
+      return {
+        doctor: doc,
+        expected: reportMap[id] || 0,
+        actual: actualMap[id] || 0,
+      };
+    });
+
+    res.render("trial/receptionist-report", { reportData, dateParam });
   } catch (err) {
     console.log(err);
     req.flash("error", "Error loading report.");
+    res.redirect("/receptionist");
+  }
+});
+
+// ── Save expected count for a doctor+date ─────────────────
+app.post("/receptionist/report/expected", isReceptionist, async (req, res) => {
+  try {
+    const { doctorId, date, expectedCount } = req.body;
+    await DailyReport.findOneAndUpdate(
+      { doctor: doctorId, date },
+      { expectedCount: parseInt(expectedCount) || 0 },
+      { upsert: true, new: true }
+    );
+    req.flash("success", "Expected count updated.");
+    res.redirect(`/receptionist/report?date=${date}`);
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Could not save expected count.");
+    res.redirect("/receptionist/report");
+  }
+});
+
+// ── Emergency – trigger ───────────────────────────────────
+app.post("/receptionist/emergency/trigger", isReceptionist, async (req, res) => {
+  try {
+    const { message } = req.body;
+    await Emergency.findOneAndUpdate(
+      {},
+      {
+        active: true,
+        triggeredAt: new Date(),
+        message: message || "Emergency Alert! Please follow staff instructions.",
+      },
+      { upsert: true, new: true }
+    );
+    req.flash("success", "Emergency alert has been activated.");
+    res.redirect("/receptionist");
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Could not trigger emergency alert.");
+    res.redirect("/receptionist");
+  }
+});
+
+// ── Emergency – clear ─────────────────────────────────────
+app.post("/receptionist/emergency/clear", isReceptionist, async (req, res) => {
+  try {
+    await Emergency.findOneAndUpdate({}, { active: false, triggeredAt: null }, { upsert: true });
+    req.flash("success", "Emergency alert cleared.");
+    res.redirect("/receptionist");
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Could not clear emergency alert.");
     res.redirect("/receptionist");
   }
 });

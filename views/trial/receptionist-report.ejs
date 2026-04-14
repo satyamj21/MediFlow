@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>MediFlow – Daily Report</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/mediflow.css">
+  <style>
+    .sidebar { background: linear-gradient(175deg, #0d6e6e 0%, #0e9090 100%); }
+    .sidebar nav a.active { background: rgba(255,255,255,0.22); }
+
+    .report-row-match    { background: #f0fdf4; }
+    .report-row-over     { background: #fff7ed; }
+    .report-row-under    { background: #fef2f2; }
+    .report-row-no-data  { }
+
+    .diff-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 999px;
+      font-size: 11.5px; font-weight: 700;
+    }
+    .diff-match  { background: #dcfce7; color: #166534; }
+    .diff-over   { background: #ffedd5; color: #9a3412; }
+    .diff-under  { background: #fee2e2; color: #991b1b; }
+    .diff-none   { background: var(--gray-100); color: var(--gray-500); }
+
+    .expected-form { display: flex; align-items: center; gap: 6px; }
+    .expected-form input[type="number"] {
+      width: 68px; padding: 5px 8px; border: 1.5px solid var(--gray-200);
+      border-radius: 6px; font-family: 'DM Sans', sans-serif; font-size: 12.5px;
+      font-weight: 600; text-align: center; outline: none; transition: 0.14s;
+    }
+    .expected-form input[type="number"]:focus {
+      border-color: #0d9488;
+      box-shadow: 0 0 0 3px rgba(13,148,136,0.1);
+    }
+    .expected-form button {
+      padding: 5px 11px; font-size: 11.5px; border-radius: 6px;
+      background: #0e9090; color: white; border: none;
+      cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 600;
+      transition: background 0.14s;
+    }
+    .expected-form button:hover { background: #0d6e6e; }
+
+    .date-picker-wrap {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .date-picker-wrap input[type="date"] {
+      padding: 7px 12px; border: 1.5px solid var(--gray-200);
+      border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px;
+      outline: none; transition: 0.14s; cursor: pointer;
+    }
+    .date-picker-wrap input[type="date"]:focus {
+      border-color: #0d9488;
+      box-shadow: 0 0 0 3px rgba(13,148,136,0.1);
+    }
+
+    .summary-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 22px; }
+    .summary-card {
+      background: white; border-radius: var(--radius); padding: 16px 18px;
+      box-shadow: var(--shadow); border-left: 4px solid transparent;
+    }
+    .summary-card.sc-total  { border-color: #0d9488; }
+    .summary-card.sc-match  { border-color: var(--green); }
+    .summary-card.sc-diff   { border-color: var(--red); }
+    .summary-card .sc-val   { font-size: 26px; font-weight: 700; color: var(--gray-900); line-height: 1; }
+    .summary-card .sc-label { font-size: 11.5px; color: var(--gray-500); margin-top: 5px; }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-wrap"><%- icon('hospital') %></div>
+    <span class="brand-name">MediFlow</span>
+  </div>
+  <div class="sidebar-section-label">Reception</div>
+  <nav>
+    <a href="/receptionist"><span class="nav-icon"><%- icon('dashboard') %></span> Dashboard</a>
+    <a href="/receptionist/queue"><span class="nav-icon"><%- icon('queue') %></span> Live Queue</a>
+    <a href="/receptionist/appointments"><span class="nav-icon"><%- icon('appointments') %></span> Manage Appointments</a>
+    <a href="/receptionist/patients"><span class="nav-icon"><%- icon('patients') %></span> Patients</a>
+    <a href="/receptionist/add-patient"><span class="nav-icon"><%- icon('addpatient') %></span> Add Patient</a>
+    <a href="/receptionist/doctors"><span class="nav-icon"><%- icon('doctor') %></span> Doctors</a>
+    <a href="/receptionist/report" class="active"><span class="nav-icon"><%- icon('report') %></span> Daily Report</a>
+  </nav>
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-divider"></div>
+  <% if (typeof curruser !== 'undefined' && curruser) { %>
+  <div class="sidebar-user">
+    <div class="avatar"><%= curruser.username[0].toUpperCase() %></div>
+    <div>
+      <div class="user-name"><%= curruser.username %></div>
+      <div class="user-role"><%= curruser.role %></div>
+    </div>
+  </div>
+  <% } %>
+  <form action="/logout" method="GET">
+    <button class="logout-btn"><%- icon('logout') %> Logout</button>
+  </form>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+    <div class="flash flash-success"><%- icon('success') %> <%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+    <div class="flash flash-error"><%- icon('warning') %> <%= error %></div>
+  <% } %>
+
+  <div class="page-header" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
+    <div>
+      <h1>Daily Report</h1>
+      <p>Expected vs. actual patient visits per doctor for a selected date.</p>
+    </div>
+    <form method="GET" action="/receptionist/report" class="date-picker-wrap">
+      <label style="font-size:12px; font-weight:600; color:var(--gray-600);">Report Date:</label>
+      <input type="date" name="date" value="<%= dateParam %>" onchange="this.form.submit()">
+    </form>
+  </div>
+
+  <%
+    const totalExpected = reportData.reduce((s, r) => s + r.expected, 0);
+    const totalActual   = reportData.reduce((s, r) => s + r.actual, 0);
+    const matchCount    = reportData.filter(r => r.expected > 0 && r.expected === r.actual).length;
+    const mismatchCount = reportData.filter(r => r.expected > 0 && r.expected !== r.actual).length;
+  %>
+
+  <!-- Summary cards -->
+  <div class="summary-cards">
+    <div class="summary-card sc-total">
+      <div class="sc-val"><%= totalActual %> / <%= totalExpected %></div>
+      <div class="sc-label">Actual / Expected patients today</div>
+    </div>
+    <div class="summary-card sc-match">
+      <div class="sc-val"><%= matchCount %></div>
+      <div class="sc-label">Doctors meeting expected count</div>
+    </div>
+    <div class="summary-card sc-diff">
+      <div class="sc-val"><%= mismatchCount %></div>
+      <div class="sc-label">Doctors with mismatch</div>
+    </div>
+  </div>
+
+  <!-- Report table -->
+  <div class="card">
+    <div class="card-header-row">
+      <div>
+        <h2>Patient Count by Doctor</h2>
+        <p>Set expected counts and compare with actuals. Changes are saved per doctor per date.</p>
+      </div>
+    </div>
+
+    <% if (!reportData || reportData.length === 0) { %>
+      <div class="empty-state">
+        <div class="empty-icon"><%- icon('doctor') %></div>
+        <h3>No doctors found</h3>
+        <p>Add doctors to the system to view the daily report.</p>
+      </div>
+    <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Doctor</th>
+            <th>Specialization</th>
+            <th>Expected</th>
+            <th>Actual</th>
+            <th>Difference</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% reportData.forEach((row, i) => {
+            const diff = row.actual - row.expected;
+            let rowClass = 'report-row-no-data';
+            let diffClass = 'diff-none';
+            let statusText = 'No target set';
+            if (row.expected > 0) {
+              if (diff === 0)       { rowClass = 'report-row-match'; diffClass = 'diff-match'; statusText = '✓ On Target'; }
+              else if (diff > 0)    { rowClass = 'report-row-over';  diffClass = 'diff-over';  statusText = '↑ Over Target'; }
+              else                  { rowClass = 'report-row-under'; diffClass = 'diff-under'; statusText = '↓ Under Target'; }
+            }
+          %>
+          <tr class="<%= rowClass %>">
+            <td style="color:var(--gray-400); font-size:11.5px;"><%= i+1 %></td>
+            <td>
+              <div class="td-primary">Dr. <%= row.doctor.name %></div>
+            </td>
+            <td><div class="td-sub" style="font-size:12.5px; color:var(--gray-700);"><%= row.doctor.specialization %></div></td>
+            <td>
+              <form method="POST" action="/receptionist/report/expected" class="expected-form">
+                <input type="hidden" name="doctorId" value="<%= row.doctor._id %>">
+                <input type="hidden" name="date" value="<%= dateParam %>">
+                <input type="number" name="expectedCount" value="<%= row.expected %>" min="0" max="999">
+                <button type="submit">Set</button>
+              </form>
+            </td>
+            <td>
+              <span style="font-size:22px; font-weight:700; color:var(--gray-900);"><%= row.actual %></span>
+            </td>
+            <td>
+              <span class="diff-badge <%= diffClass %>">
+                <%= diff > 0 ? '+' : '' %><%= row.expected > 0 ? diff : '—' %>
+              </span>
+            </td>
+            <td>
+              <span style="font-size:12px; font-weight:600; color:<%= row.expected === 0 ? 'var(--gray-400)' : diff === 0 ? '#166534' : diff > 0 ? '#9a3412' : '#991b1b' %>;">
+                <%= statusText %>
+              </span>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+
+</main>
+</body>
+</html>

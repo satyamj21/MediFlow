@@ -21,7 +21,8 @@ const doctors = [
     specialization: "Orthopedic",
     availableDays: ["Mon", "Wed", "Fri"],
     availableSlots: ["1:00", "2:00", "3:00"]
-  }
+  },
+  
 ];
 
 async function seedDoctors() {

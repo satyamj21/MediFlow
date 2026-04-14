@@ -3,9 +3,37 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>MediFlow – Dashboard</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/mediflow.css">
+  <style>
+    /* Emergency alert banner */
+    .emergency-alert-banner {
+      display: none;
+      background: linear-gradient(90deg, #7f1d1d, #dc2626);
+      color: white; padding: 14px 20px; border-radius: var(--radius);
+      margin-bottom: 18px; font-weight: 700; font-size: 13.5px;
+      align-items: center; gap: 12px;
+      box-shadow: 0 4px 16px rgba(220,38,38,0.3);
+      animation: emergencySlide 0.4s ease;
+    }
+    .emergency-alert-banner.visible { display: flex; }
+    .emergency-alert-banner svg { width: 18px; height: 18px; flex-shrink: 0; animation: shakePulse 0.8s ease-in-out infinite; }
+    .emergency-alert-text { flex: 1; }
+    .emergency-alert-text .emg-title { font-size: 14px; font-weight: 800; }
+    .emergency-alert-text .emg-msg   { font-size: 12px; opacity: 0.85; margin-top: 3px; font-weight: 500; }
+    .emergency-alert-time { font-size: 11px; opacity: 0.65; margin-left: auto; flex-shrink: 0; }
+    @keyframes emergencySlide {
+      from { opacity: 0; transform: translateY(-8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes shakePulse {
+      0%, 100% { transform: rotate(0deg) scale(1); }
+      25%       { transform: rotate(-10deg) scale(1.1); }
+      75%       { transform: rotate(10deg) scale(1.1); }
+    }
+  </style>
 </head>
 <body>
 
@@ -27,7 +55,10 @@
     <a href="/appointments">
       <span class="nav-icon"><%- icon('appointments') %></span> My Appointments
     </a>
-    <a class="nav-disabled">
+    <a href="/user/profile">
+      <span class="nav-icon"><%- icon('profile') %></span> My Profile
+    </a>
+    <a href="/user/queue">
       <span class="nav-icon"><%- icon('queue') %></span> Live Queue
     </a>
   </nav>
@@ -59,6 +90,16 @@
     <div class="flash flash-error"><%- icon('warning') %> <%= error %></div>
   <% } %>
 
+  <!-- Emergency Alert Banner (shown when emergency is active) -->
+  <div class="emergency-alert-banner" id="emergencyBanner">
+    <%- icon('emergency') %>
+    <div class="emergency-alert-text">
+      <div class="emg-title">⚠ EMERGENCY ALERT</div>
+      <div class="emg-msg" id="emergencyMsg">Emergency Alert! Please follow staff instructions.</div>
+    </div>
+    <div class="emergency-alert-time" id="emergencyTime"></div>
+  </div>
+
   <div class="page-header" style="display:flex; align-items:center; justify-content:space-between;">
     <div>
       <h1>Welcome back<% if(typeof curruser !== 'undefined' && curruser){ %>, <%= curruser.username %><% } %></h1>
@@ -79,11 +120,11 @@
       <h3>My Appointments</h3>
       <p>View, reschedule or cancel your upcoming visits.</p>
     </a>
-    <div class="action-card disabled">
-      <div class="ac-icon gray"><%- icon('queue') %></div>
-      <h3>Live Queue</h3>
-      <p>Check your current waiting number and queue status.</p>
-    </div>
+    <a href="/user/profile" class="action-card">
+      <div class="ac-icon green"><%- icon('profile') %></div>
+      <h3>My Profile</h3>
+      <p>View your personal details, blood group, allergies and contact info.</p>
+    </a>
   </div>
 
   <!-- Info bar -->
@@ -94,7 +135,7 @@
     </div>
     <div style="text-align:center;">
       <div style="font-size:10px; opacity:0.6; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px;">Hospital Hours</div>
-      <div style="font-size:13px; font-weight:600;">Mon – Sat &nbsp;&middot;&nbsp; 9:00 AM – 6:00 PM</div>
+      <div style="font-size:13px; font-weight:600;">Mon – Sat &nbsp;·&nbsp; 9:00 AM – 6:00 PM</div>
     </div>
     <div style="text-align:right;">
       <div style="font-size:10px; opacity:0.6; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px;">Emergency</div>
@@ -108,6 +149,53 @@
 
 <script>
   document.getElementById('today-date').textContent = new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+  // ── Emergency polling (every 5 seconds) ─────────────
+  let lastEmergencyState = false;
+
+  function checkEmergency() {
+    fetch('/api/emergency/status')
+      .then(r => r.json())
+      .then(data => {
+        const banner = document.getElementById('emergencyBanner');
+        if (data.active) {
+          document.getElementById('emergencyMsg').textContent = data.message || 'Emergency Alert! Please follow staff instructions.';
+          if (data.triggeredAt) {
+            const t = new Date(data.triggeredAt);
+            document.getElementById('emergencyTime').textContent =
+              'Since ' + t.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+          }
+          if (!lastEmergencyState) {
+            // Play alert sound if browser allows (optional, best-effort)
+            try {
+              const ctx = new AudioContext();
+              const osc = ctx.createOscillator();
+              osc.connect(ctx.destination);
+              osc.frequency.value = 880;
+              osc.start();
+              osc.stop(ctx.currentTime + 0.4);
+            } catch(e) {}
+          }
+          banner.classList.add('visible');
+          lastEmergencyState = true;
+        } else {
+          banner.classList.remove('visible');
+          lastEmergencyState = false;
+        }
+      })
+      .catch(() => {});
+  }
+
+  checkEmergency(); // Check immediately on load
+  setInterval(checkEmergency, 5000); // Then poll every 5 seconds
+
+  // ── Action card entrance animation ─────────────────
+  document.querySelectorAll('.action-card').forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(14px)';
+    card.style.transition = `opacity 0.32s ease ${i * 90}ms, transform 0.32s ease ${i * 90}ms`;
+    requestAnimationFrame(() => { card.style.opacity = '1'; card.style.transform = 'translateY(0)'; });
+  });
 </script>
 </body>
 </html>

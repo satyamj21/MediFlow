@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>MediFlow – Live Queue</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/mediflow.css">
+  <style>
+    /* ── Live queue hero card ── */
+    .queue-status-card {
+      background: linear-gradient(135deg, #0f3460, #1a56db);
+      color: white; border-radius: var(--radius); padding: 32px 24px;
+      text-align: center; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(26,86,219,0.25);
+      position: relative; overflow: hidden;
+    }
+    .queue-status-card::before {
+      content: ''; position: absolute; left: -80px; top: -80px;
+      width: 240px; height: 240px; background: rgba(255,255,255,0.04);
+      border-radius: 50%; pointer-events: none;
+    }
+    .queue-status-card::after {
+      content: ''; position: absolute; right: -50px; bottom: -50px;
+      width: 200px; height: 200px; background: rgba(255,255,255,0.05);
+      border-radius: 50%; pointer-events: none;
+    }
+
+    .token-display {
+      font-size: 64px; font-weight: 800; font-family: 'DM Serif Display', serif;
+      line-height: 1; margin: 16px 0; text-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .status-badge-live {
+      display: inline-block; padding: 6px 16px; border-radius: 20px;
+      font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+      background: rgba(255,255,255,0.2); backdrop-filter: blur(4px);
+    }
+    .status-badge-live.waiting { color: #fef08a; background: rgba(202,138,4,0.3); }
+    .status-badge-live.called  { color: #bfdbfe; background: rgba(37,99,235,0.3); animation: pulse 2s infinite; }
+    .status-badge-live.served  { color: #bbf7d0; background: rgba(22,163,74,0.3); }
+    .status-badge-live.skipped { color: #fecaca; background: rgba(220,38,38,0.3); }
+
+    @keyframes pulse {
+      0%  { box-shadow: 0 0 0 0 rgba(37,99,235, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(37,99,235, 0); }
+      100%{ box-shadow: 0 0 0 0 rgba(37,99,235, 0); }
+    }
+
+    .metrics-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px;
+    }
+    .metric-card {
+      background: white; border: 1px solid var(--gray-200);
+      border-radius: var(--radius); padding: 20px; text-align: center;
+    }
+    .metric-value { font-size: 28px; font-weight: 800; color: var(--gray-900); margin-bottom: 4px; }
+    .metric-label { font-size: 13px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .loading-pulse {
+      display: inline-block; width: 8px; height: 8px; background: currentColor;
+      border-radius: 50%; opacity: 0; animation: dotPulse 1.5s infinite;
+    }
+    @keyframes dotPulse {
+      0%  { opacity: 0; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.2); }
+      100%{ opacity: 0; transform: scale(0.8); }
+    }
+
+    /* ── Section headers ── */
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px; margin-top: 8px;
+    }
+    .section-header h2 {
+      font-size: 17px; font-weight: 700; color: var(--gray-900); margin: 0;
+    }
+    .section-header .section-count {
+      background: var(--gray-100); color: var(--gray-600);
+      font-size: 11px; font-weight: 700; padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    /* ── Appointment cards ── */
+    .appt-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .appt-card {
+      background: white; border: 1px solid var(--gray-200);
+      border-radius: var(--radius); padding: 18px 20px;
+      display: flex; flex-direction: column; gap: 10px;
+      transition: all 0.18s; position: relative;
+    }
+    .appt-card:hover { box-shadow: 0 4px 16px rgba(15,52,96,0.08); border-color: var(--gray-300); }
+    .appt-card-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    .appt-doctor { font-weight: 700; font-size: 15px; color: var(--gray-900); }
+    .appt-specialization { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+    .appt-info-row {
+      display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--gray-600);
+    }
+    .appt-info-item {
+      display: flex; align-items: center; gap: 5px;
+    }
+    .appt-info-item svg { width: 14px; height: 14px; opacity: 0.5; }
+    .appt-status-badge {
+      display: inline-block; padding: 4px 12px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .appt-status-badge.pending   { background: #fef9c3; color: #92400e; }
+    .appt-status-badge.confirmed { background: #dcfce7; color: #166534; }
+    .appt-card .appt-note {
+      font-size: 11.5px; color: var(--gray-400); font-style: italic;
+      display: flex; align-items: center; gap: 5px; margin-top: 2px;
+    }
+    .appt-card .appt-note svg { width: 13px; height: 13px; }
+
+    /* ── Checked-in indicator ── */
+    .appt-card.checked-in { border-left: 4px solid #1a56db; }
+    .appt-card.checked-in .appt-note { color: #1a56db; font-style: normal; font-weight: 600; }
+
+    /* ── Today highlight ── */
+    .today-divider {
+      display: flex; align-items: center; gap: 12px; margin: 28px 0 18px;
+      font-size: 12px; font-weight: 700; color: var(--gray-400); text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .today-divider::before, .today-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--gray-200);
+    }
+    .today-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #1a56db;
+      animation: todayBlink 2s ease infinite;
+    }
+    @keyframes todayBlink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-wrap"><%- icon('hospital') %></div>
+    <span class="brand-name">MediFlow</span>
+  </div>
+
+  <div class="sidebar-section-label">Navigation</div>
+  <nav>
+    <a href="/user">
+      <span class="nav-icon"><%- icon('dashboard') %></span> Dashboard
+    </a>
+    <a href="/book">
+      <span class="nav-icon"><%- icon('calendar') %></span> Book Appointment
+    </a>
+    <a href="/appointments">
+      <span class="nav-icon"><%- icon('appointments') %></span> My Appointments
+    </a>
+    <a href="/user/profile">
+      <span class="nav-icon"><%- icon('profile') %></span> My Profile
+    </a>
+    <a href="/user/queue" class="active">
+      <span class="nav-icon"><%- icon('queue') %></span> Live Queue
+    </a>
+  </nav>
+
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-divider"></div>
+
+  <% if (typeof curruser !== 'undefined' && curruser) { %>
+  <div class="sidebar-user">
+    <div class="avatar"><%= curruser.username[0].toUpperCase() %></div>
+    <div>
+      <div class="user-name"><%= curruser.username %></div>
+      <div class="user-role"><%= curruser.role %></div>
+    </div>
+  </div>
+  <% } %>
+  <form action="/logout" method="GET">
+    <button class="logout-btn"><%- icon('logout') %> Logout</button>
+  </form>
+</aside>
+
+<main class="main">
+
+  <div class="page-header">
+    <h1>Live Queue Tracker</h1>
+    <p>Track your appointments and live queue position in real-time.</p>
+  </div>
+
+  <%
+    // Separate today's appointments from future ones
+    const todayAppts = appointments.filter(a => {
+      const d = new Date(a.date).toISOString().split('T')[0];
+      return d === today;
+    });
+    const futureAppts = appointments.filter(a => {
+      const d = new Date(a.date).toISOString().split('T')[0];
+      return d > today;
+    });
+
+    // Build a map of appointmentId -> queueEntry for today's entries
+    const entryMap = {};
+    todayEntries.forEach(e => {
+      if (e.doctor) entryMap[e.doctor._id.toString()] = e;
+    });
+  %>
+
+  <!-- ═══════════ LIVE QUEUE — TODAY ═══════════ -->
+  <% if (todayEntries && todayEntries.length > 0) { %>
+    <% todayEntries.forEach(entry => { %>
+      <div class="queue-status-card" id="live-card-<%= entry._id %>">
+        <div style="font-size:14px; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; opacity:0.8;">Your Token Number</div>
+        <div class="token-display">#<span class="ui-token"><%= entry.tokenNumber %></span></div>
+        <div class="status-badge-live <%= entry.status %> ui-status"><%= entry.status %></div>
+        <div style="margin-top:20px; font-size:15px; font-weight:500;">
+          Consulting with <strong>Dr. <%= entry.doctor.name %></strong>
+          <% if (entry.doctor.specialization) { %>
+            <span style="opacity:0.7; font-size:13px;">&middot; <%= entry.doctor.specialization %></span>
+          <% } %>
+        </div>
+
+        <div style="margin-top:24px; font-size:11px; font-weight:500; opacity:0.6; display:flex; align-items:center; justify-content:center; gap:6px;">
+          <span class="loading-pulse"></span> Live updating every 10s
+        </div>
+      </div>
+
+      <div class="metrics-grid" id="metrics-<%= entry._id %>">
+        <div class="metric-card">
+          <div class="metric-value ui-position">--</div>
+          <div class="metric-label">Position in Line</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value ui-wait">--</div>
+          <div class="metric-label">Est. Wait (Mins)</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-value ui-called">--</div>
+          <div class="metric-label">Currently Called</div>
+        </div>
+      </div>
+
+      <input type="hidden" class="entry-date" value="<%= entry.date %>">
+      <input type="hidden" class="entry-doctor" value="<%= entry.doctor._id %>">
+      <input type="hidden" class="entry-patient" value="<%= curruser._id %>">
+      <input type="hidden" class="entry-id" value="<%= entry._id %>">
+    <% }) %>
+  <% } %>
+
+  <!-- ═══════════ TODAY'S APPOINTMENTS ═══════════ -->
+  <% if (todayAppts.length > 0) { %>
+    <div class="today-divider">
+      <span class="today-dot"></span> Today's Appointments
+    </div>
+    <div class="appt-cards">
+      <% todayAppts.forEach(appt => {
+        const docId = appt.doctor ? appt.doctor._id.toString() : '';
+        const hasEntry = todayEntries.some(e => e.appointment && e.appointment.toString() === appt._id.toString());
+      %>
+        <div class="appt-card<%= hasEntry ? ' checked-in' : '' %>">
+          <div class="appt-card-header">
+            <div>
+              <div class="appt-doctor">Dr. <%= appt.doctor ? appt.doctor.name : 'N/A' %></div>
+              <div class="appt-specialization"><%= appt.doctor ? appt.doctor.specialization : '' %></div>
+            </div>
+            <span class="appt-status-badge <%= (appt.status || 'Pending').toLowerCase() %>"><%= appt.status || 'Pending' %></span>
+          </div>
+          <div class="appt-info-row">
+            <div class="appt-info-item">
+              <%- icon('calendar') %>
+              <span><%= new Date(appt.date).toDateString() %></span>
+            </div>
+            <div class="appt-info-item">
+              <%- icon('clock') %>
+              <span><%= appt.timeSlot %></span>
+            </div>
+          </div>
+          <% if (hasEntry) { %>
+            <div class="appt-note">
+              <%- icon('check') %> Checked in — see live tracker above
+            </div>
+          <% } else { %>
+            <div class="appt-note">
+              <%- icon('clock') %> Arrive at the reception to get your token
+            </div>
+          <% } %>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <!-- ═══════════ UPCOMING APPOINTMENTS ═══════════ -->
+  <% if (futureAppts.length > 0) { %>
+    <div class="section-header" style="margin-top: 28px;">
+      <h2>Upcoming Appointments</h2>
+      <span class="section-count"><%= futureAppts.length %></span>
+    </div>
+    <div class="appt-cards">
+      <% futureAppts.forEach(appt => { %>
+        <div class="appt-card">
+          <div class="appt-card-header">
+            <div>
+              <div class="appt-doctor">Dr. <%= appt.doctor ? appt.doctor.name : 'N/A' %></div>
+              <div class="appt-specialization"><%= appt.doctor ? appt.doctor.specialization : '' %></div>
+            </div>
+            <span class="appt-status-badge <%= (appt.status || 'Pending').toLowerCase() %>"><%= appt.status || 'Pending' %></span>
+          </div>
+          <div class="appt-info-row">
+            <div class="appt-info-item">
+              <%- icon('calendar') %>
+              <span><%= new Date(appt.date).toDateString() %></span>
+            </div>
+            <div class="appt-info-item">
+              <%- icon('clock') %>
+              <span><%= appt.timeSlot %></span>
+            </div>
+          </div>
+          <div class="appt-note">
+            <%- icon('clock') %> Queue will go live on appointment day
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <!-- ═══════════ EMPTY STATE ═══════════ -->
+  <% if (appointments.length === 0 && todayEntries.length === 0) { %>
+    <div class="empty-state">
+      <div class="empty-icon"><%- icon('queue') %></div>
+      <h3>No Appointments or Active Tokens</h3>
+      <p>You don't have any upcoming appointments. Book one to get started!</p>
+      <a href="/book" class="btn btn-primary" style="margin-top: 16px;">Book Appointment</a>
+    </div>
+  <% } %>
+
+  <!-- ═══════════ LIVE POLLING SCRIPT ═══════════ -->
+  <script>
+    function fetchAllEntries() {
+      const entries = document.querySelectorAll('.entry-id');
+      entries.forEach(el => {
+        const container = el.closest('main') || document;
+        const id = el.value;
+        const dateEl = container.querySelector(`.entry-date`);
+        const doctorEl = container.querySelector(`.entry-doctor`);
+        const patientEl = container.querySelector(`.entry-patient`);
+
+        // Find the associated card/metrics by entry ID
+        const card = document.getElementById('live-card-' + id);
+        const metrics = document.getElementById('metrics-' + id);
+        if (!card || !metrics) return;
+
+        const date = el.previousElementSibling.previousElementSibling.previousElementSibling.value;
+        const doctorId = el.previousElementSibling.previousElementSibling.value;
+        const patientId = el.previousElementSibling.value;
+
+        fetch(`/api/queue/status?date=${date}&doctorId=${doctorId}&patientId=${patientId}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.error) return;
+
+            // Update Token
+            card.querySelector('.ui-token').textContent = data.tokenNumber;
+
+            // Update Status Badge
+            const statusBadge = card.querySelector('.ui-status');
+            statusBadge.className = 'status-badge-live ' + data.status + ' ui-status';
+            statusBadge.textContent = data.status;
+
+            // Update Metrics
+            const posEl  = metrics.querySelector('.ui-position');
+            const waitEl = metrics.querySelector('.ui-wait');
+            const calledEl = metrics.querySelector('.ui-called');
+
+            if (data.status === 'served' || data.status === 'skipped') {
+              posEl.textContent = '-';
+              waitEl.textContent = '-';
+            } else if (data.status === 'called') {
+              posEl.textContent = "It's your turn!";
+              posEl.style.fontSize = "18px";
+              waitEl.textContent = '0';
+            } else {
+              posEl.textContent = data.position;
+              posEl.style.fontSize = "28px";
+              waitEl.textContent = data.estimatedWaitMinutes;
+            }
+            calledEl.textContent = data.calledToken ? '#' + data.calledToken : 'None';
+          })
+          .catch(err => console.log('Error fetching queue status:', err));
+      });
+    }
+
+    // Fetch immediately on load, then every 10 seconds
+    <% if (todayEntries && todayEntries.length > 0) { %>
+      fetchAllEntries();
+      setInterval(fetchAllEntries, 10000);
+    <% } %>
+  </script>
+
+</main>
+</body>
+</html>

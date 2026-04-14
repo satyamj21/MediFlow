@@ -39,7 +39,7 @@
 
       <!-- PASSWORD -->
       <div class="input-group password-group">
-        <input type="password" name="password" id="passwordField" placeholder="Password" required />
+        <input type="password" name="password" id="passwordField" placeholder="Password" required pattern="(?=.*[A-Z])(?=.*[@#%\^&\*\(\)!]).{9,}" title="Password must be >8 characters long, contain at least 1 uppercase letter, and 1 special character (@ # % ^ & * ( ) !)." />
         <span class="eye" onclick="togglePassword()">
           <i class="fa-regular fa-eye"></i>
         </span>

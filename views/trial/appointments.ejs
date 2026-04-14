@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" type="image/svg+xml" href="/public/favicon.svg">
   <title>MediFlow – My Appointments</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/mediflow.css">
@@ -20,7 +21,7 @@
     <a href="/user"><span class="nav-icon"><%- icon('dashboard') %></span> Dashboard</a>
     <a href="/book"><span class="nav-icon"><%- icon('calendar') %></span> Book Appointment</a>
     <a href="/appointments" class="active"><span class="nav-icon"><%- icon('appointments') %></span> My Appointments</a>
-    <a class="nav-disabled"><span class="nav-icon"><%- icon('queue') %></span> Live Queue</a>
+    <a href="/user/queue"><span class="nav-icon"><%- icon('queue') %></span> Live Queue</a>
   </nav>
   <div class="sidebar-spacer"></div>
   <div class="sidebar-divider"></div>
@@ -79,7 +80,7 @@
             <tr>
               <td style="color:var(--gray-400); font-size:12px;"><%= i + 1 %></td>
               <td>
-                <div class="td-primary"><%= appt.doctor.name %></div>
+                <div class="td-primary"><%=appt.doctor.name%></div>
                 <div class="td-sub"><%= appt.doctor.specialization %></div>
               </td>
               <td><%= new Date(appt.date).toDateString() %></td>
