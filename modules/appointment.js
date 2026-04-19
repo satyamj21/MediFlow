@@ -25,6 +25,25 @@ const appointmentSchema = new mongoose.Schema({
   status: {
     type: String,
     default: "Pending"
+  },
+
+  // ── Pending Reschedule Proposal (set by receptionist, confirmed/declined by patient) ──
+  reschedulePending: {
+    type: Boolean,
+    default: false
+  },
+  proposedDate: {
+    type: Date,
+    default: null
+  },
+  proposedTimeSlot: {
+    type: String,
+    default: null
+  },
+  proposedDoctor: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Doctor",
+    default: null
   }
 
 });

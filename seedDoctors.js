@@ -5,22 +5,22 @@ mongoose.connect("mongodb://127.0.0.1:27017/mediflow");
 
 const doctors = [
   {
-    name: "Dr Sarah Khan",
+    name: "Dr. Sarah",
     specialization: "Cardiologist",
-    availableDays: ["Mon", "Tue", "Wed"],
-    availableSlots: ["10:00", "11:00", "12:00"]
+    availableDays: ["Mon", "Sat"],
+    availableSlots: ["10:00 AM", "10:00 PM"]
   },
   {
-    name: "Dr Jhatka",
+    name: "Dr. Jhatka",
     specialization: "Dermatologist",
-    availableDays: ["Tue", "Thu"],
-    availableSlots: ["9:00", "10:00", "11:00"]
+    availableDays: ["Tue", "Sun"],
+    availableSlots: ["9:00 AM", "11:00 PM"]
   },
   {
-    name: "Dr John Smith",
+    name: "Dr. John Smith",
     specialization: "Orthopedic",
-    availableDays: ["Mon", "Wed", "Fri"],
-    availableSlots: ["1:00", "2:00", "3:00"]
+    availableDays: ["Mon", "Fri"],
+    availableSlots: ["9:00 AM", "9:00 PM"]
   },
   
 ];

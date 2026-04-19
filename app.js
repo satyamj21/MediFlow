@@ -11,6 +11,7 @@ const Appointment = require("./modules/appointment");
 const DailyReport = require("./modules/dailyReport");
 const Emergency = require("./modules/emergency");
 const QueueEntry = require("./modules/queueEntry");
+const Notification = require("./modules/notification");
 const flash = require("connect-flash");
 
 app.set("view engine", "ejs");
@@ -70,6 +71,30 @@ app.locals.icon = function(name) {
     stethoscope:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4.8 2.3A.3.3 0 1 0 5 2H4a2 2 0 0 0-2 2v5a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6V4a2 2 0 0 0-2-2h-1a.2.2 0 1 0 .3.3"/><path d="M8 15v1a6 6 0 0 0 6 6v0a6 6 0 0 0 6-6v-4"/><circle cx="20" cy="10" r="2"/></svg>`,
   };
   return i[name] || "";
+};
+
+// ── Custom helpers ──────────────────────────────────────────
+app.locals.isLate = function(appt) {
+  if (!appt || appt.status === 'Cancelled' || appt.status === 'Completed') return false;
+  try {
+    const d = new Date(appt.date);
+    if (isNaN(d.getTime())) return false;
+    if (!appt.timeSlot) return false;
+
+    const timeMatch = appt.timeSlot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!timeMatch) return false;
+    let hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+    const ampm = timeMatch[3].toUpperCase();
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+
+    d.setHours(hours, minutes, 0, 0);
+
+    return new Date() > d;
+  } catch (e) {
+    return false;
+  }
 };
 
 // ── Locals middleware ─────────────────────────────────────
@@ -263,7 +288,8 @@ app.get("/user/queue", isLoggedIn, async (req, res) => {
     // Today's queue entries for this patient
     const todayEntries = await QueueEntry.find({
       patient: req.user._id,
-      date: today
+      date: today,
+      status: { $nin: ["served", "skipped"] }
     }).populate("doctor").sort({ tokenNumber: 1 });
 
     res.render("trial/user-queue", { appointments, todayEntries, today });
@@ -516,6 +542,110 @@ app.post("/cancel/:id", isLoggedIn, async (req, res) => {
   }
 });
 
+// ── Delete appointment (user) ──────────────────────────────
+app.post("/appointments/:id/delete", isLoggedIn, async (req, res) => {
+  try {
+    await Appointment.findByIdAndDelete(req.params.id);
+    req.flash("success", "Appointment deleted permanently.");
+    res.redirect("/appointments");
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Error deleting appointment.");
+    res.redirect("/appointments");
+  }
+});
+
+// ── Patient: confirm proposed reschedule ──────────────────
+app.post("/appointments/:id/confirm-reschedule", isLoggedIn, async (req, res) => {
+  try {
+    const appt = await Appointment.findById(req.params.id);
+    if (!appt || !appt.reschedulePending) {
+      req.flash("error", "No pending reschedule found.");
+      return res.redirect("/appointments");
+    }
+    // Apply proposed changes
+    await Appointment.findByIdAndUpdate(req.params.id, {
+      date: appt.proposedDate,
+      timeSlot: appt.proposedTimeSlot,
+      doctor: appt.proposedDoctor,
+      reschedulePending: false,
+      proposedDate: null,
+      proposedTimeSlot: null,
+      proposedDoctor: null,
+      status: "Confirmed",
+    });
+    // Mark the notification read
+    await Notification.updateMany(
+      { user: req.user._id, appointment: appt._id, type: "reschedule_proposed", isRead: false },
+      { isRead: true }
+    );
+    req.flash("success", "Reschedule confirmed! Your appointment has been updated.");
+    res.redirect("/appointments");
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Error confirming reschedule.");
+    res.redirect("/appointments");
+  }
+});
+
+// ── Patient: decline proposed reschedule (cancel the appointment) ──
+app.post("/appointments/:id/decline-reschedule", isLoggedIn, async (req, res) => {
+  try {
+    const appt = await Appointment.findById(req.params.id);
+    if (!appt) {
+      req.flash("error", "Appointment not found.");
+      return res.redirect("/appointments");
+    }
+    await Appointment.findByIdAndUpdate(req.params.id, {
+      status: "Cancelled",
+      reschedulePending: false,
+      proposedDate: null,
+      proposedTimeSlot: null,
+      proposedDoctor: null,
+    });
+    // Mark the notification read
+    await Notification.updateMany(
+      { user: req.user._id, appointment: appt._id, type: "reschedule_proposed", isRead: false },
+      { isRead: true }
+    );
+    req.flash("success", "You have cancelled this appointment.");
+    res.redirect("/appointments");
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Error declining reschedule.");
+    res.redirect("/appointments");
+  }
+});
+
+// ── Patient notification polling API ─────────────────────
+app.get("/api/notifications", isLoggedIn, async (req, res) => {
+  try {
+    const notifications = await Notification.find({
+      user: req.user._id,
+      isRead: false,
+    })
+      .populate("proposedDoctor")
+      .sort({ createdAt: -1 })
+      .limit(10);
+    res.json({ notifications });
+  } catch (err) {
+    res.json({ notifications: [] });
+  }
+});
+
+// ── Dismiss a notification ────────────────────────────────
+app.post("/api/notifications/:id/dismiss", isLoggedIn, async (req, res) => {
+  try {
+    await Notification.findOneAndUpdate(
+      { _id: req.params.id, user: req.user._id },
+      { isRead: true }
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.json({ ok: false });
+  }
+});
+
 // ════════════════════════════════════════════════════════════
 //  RECEPTIONIST ROUTES
 // ════════════════════════════════════════════════════════════
@@ -550,16 +680,53 @@ app.get("/receptionist/appointments", isReceptionist, async (req, res) => {
   }
 });
 
-// ── Receptionist reschedule ───────────────────────────────
+// ── Receptionist reschedule PROPOSE (patient must confirm) ───
 app.post("/receptionist/reschedule/:id", isReceptionist, async (req, res) => {
   try {
     const { doctor, date, timeSlot } = req.body;
-    await Appointment.findByIdAndUpdate(req.params.id, { doctor, date, timeSlot });
-    req.flash("success", "Appointment rescheduled successfully.");
+    const appt = await Appointment.findById(req.params.id)
+      .populate("user")
+      .populate("doctor");
+    if (!appt) {
+      req.flash("error", "Appointment not found.");
+      return res.redirect("/receptionist");
+    }
+
+    // Resolve proposed doctor name for notification message
+    const proposedDoctorDoc = await Doctor.findById(doctor);
+    const proposedDoctorName = proposedDoctorDoc ? proposedDoctorDoc.name : "Unknown";
+    const proposedDateObj = new Date(date + "T00:00:00.000Z");
+
+    // Store proposed details on the appointment
+    await Appointment.findByIdAndUpdate(req.params.id, {
+      reschedulePending: true,
+      proposedDate: proposedDateObj,
+      proposedTimeSlot: timeSlot,
+      proposedDoctor: doctor,
+    });
+
+    // Notify the patient (only if appointment has a linked user)
+    if (appt.user) {
+      await Notification.create({
+        user: appt.user._id,
+        type: "reschedule_proposed",
+        appointment: appt._id,
+        message: `Your appointment has been rescheduled to ${proposedDateObj.toDateString()} at ${timeSlot} with Dr. ${proposedDoctorName}. Please confirm or cancel.`,
+        proposedDate: proposedDateObj,
+        proposedTimeSlot: timeSlot,
+        proposedDoctor: doctor,
+        originalDate: appt.date,
+        originalTimeSlot: appt.timeSlot,
+        doctorName: appt.doctor ? appt.doctor.name : "Unknown",
+        proposedDoctorName,
+      });
+    }
+
+    req.flash("success", "Reschedule proposal sent. Waiting for patient confirmation.");
     res.redirect("/receptionist");
   } catch (err) {
     console.log(err);
-    req.flash("error", "Error rescheduling appointment.");
+    req.flash("error", "Error proposing reschedule.");
     res.redirect("/receptionist");
   }
 });
@@ -734,6 +901,9 @@ app.post("/receptionist/queue/:id/served", isReceptionist, async (req, res) => {
   try {
     await QueueEntry.findByIdAndUpdate(req.params.id, { status: "served" });
     const entry = await QueueEntry.findById(req.params.id);
+    if (entry && entry.appointment) {
+      await Appointment.findByIdAndUpdate(entry.appointment, { status: "Completed" });
+    }
     req.flash("success", `Token #${entry.tokenNumber} marked as served.`);
     res.redirect(`/receptionist/queue?date=${entry.date}`);
   } catch (err) {
@@ -746,13 +916,48 @@ app.post("/receptionist/queue/:id/served", isReceptionist, async (req, res) => {
 app.post("/receptionist/queue/:id/skip", isReceptionist, async (req, res) => {
   try {
     await QueueEntry.findByIdAndUpdate(req.params.id, { status: "skipped" });
-    const entry = await QueueEntry.findById(req.params.id);
+    const entry = await QueueEntry.findById(req.params.id).populate("doctor");
+
+    // Notify the patient if this is a registered user (not a walk-in)
+    if (entry.patient) {
+      const doctorName = entry.doctor ? entry.doctor.name : "your doctor";
+      await Notification.create({
+        user: entry.patient,
+        type: "skipped",
+        appointment: entry.appointment || null,
+        message: `Your token #${entry.tokenNumber} was skipped in Dr. ${doctorName}'s queue. Please check with the reception desk to rejoin the queue.`,
+      });
+    }
+
     req.flash("success", `Token #${entry.tokenNumber} skipped.`);
     res.redirect(`/receptionist/queue?date=${entry.date}`);
   } catch (err) {
     console.log(err);
     req.flash("error", "Error skipping patient.");
     res.redirect("back");
+  }
+});
+
+// ── Delete queue entry (served/skipped only) ──────────────
+app.post("/receptionist/queue/:id/delete", isReceptionist, async (req, res) => {
+  try {
+    const entry = await QueueEntry.findById(req.params.id);
+    if (!entry) {
+      req.flash("error", "Queue entry not found.");
+      return res.redirect("/receptionist/queue");
+    }
+    if (entry.status !== "served" && entry.status !== "skipped") {
+      req.flash("error", "Only served or skipped entries can be deleted.");
+      return res.redirect(`/receptionist/queue?date=${entry.date}`);
+    }
+    const dateStr = entry.date;
+    await QueueEntry.findByIdAndDelete(req.params.id);
+    req.flash("success", `Token #${entry.tokenNumber} removed from queue.`);
+    res.redirect(`/receptionist/queue?date=${dateStr}`);
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Error deleting queue entry.");
+    res.redirect("/receptionist/queue");
   }
 });
 

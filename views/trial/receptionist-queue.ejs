@@ -326,7 +326,7 @@
         const docQueueCount = queueEntries ? queueEntries.filter(q => q.doctor && q.doctor._id.toString() === doc._id.toString()).length : 0;
       %>
         <button class="doctor-tab" data-doctor="<%= doc._id %>">
-          Dr. <%= doc.name %>
+         <%= doc.name %>
           <% if (docQueueCount > 0) { %>
             <span class="tab-count"><%= docQueueCount %></span>
           <% } %>
@@ -399,12 +399,13 @@
         <% } %>
 
         <!-- Live Queue -->
-        <div class="sub-header"><%- icon('queue') %> Live Queue (<%= docQueue.length %> tokens)</div>
-        <% if (docQueue.length === 0) { %>
-          <div class="no-entries-msg"><%- icon('inbox') %> No tokens generated for this doctor yet.</div>
+        <% const activeDocQueue = docQueue.filter(q => q.status !== 'served' && q.status !== 'skipped'); %>
+        <div class="sub-header"><%- icon('queue') %> Live Queue (<%= activeDocQueue.length %> tokens)</div>
+        <% if (activeDocQueue.length === 0) { %>
+          <div class="no-entries-msg"><%- icon('inbox') %> No active tokens generated for this doctor.</div>
         <% } else { %>
           <div class="queue-grid">
-            <% docQueue.forEach(entry => { %>
+            <% activeDocQueue.forEach(entry => { %>
               <div class="queue-card <%= entry.status %>">
                 <div class="qc-top">
                   <div class="qc-token">#<%= entry.tokenNumber %></div>
@@ -428,7 +429,12 @@
                       <button class="btn btn-danger btn-sm" style="width:100%;">Skip</button>
                     </form>
                   <% } else { %>
-                    <div style="font-size:11px; color:var(--gray-400); width:100%; text-align:center;">Completed</div>
+                    <div style="font-size:11px; color:var(--gray-400); width:100%; text-align:center; margin-bottom:6px;">
+                      <%= entry.status === 'served' ? '✓ Served' : '⊘ Skipped' %>
+                    </div>
+                    <button class="btn btn-ghost btn-sm"
+                            style="width:100%; font-size:11px; color:var(--gray-500);"
+                            onclick="deleteQueueEntry('<%= entry._id %>', this)">🗑 Delete</button>
                   <% } %>
                 </div>
               </div>
@@ -524,8 +530,10 @@
             if (sh.textContent.includes('Live Queue')) liveQueueHeader = sh;
           });
 
+          const activeEntries = doc.queueEntries.filter(q => q.status !== 'served' && q.status !== 'skipped');
+
           if (liveQueueHeader) {
-            liveQueueHeader.innerHTML = `<%- icon('queue') %> Live Queue (${doc.queueEntries.length} tokens)`;
+            liveQueueHeader.innerHTML = `<%- icon('queue') %> Live Queue (${activeEntries.length} tokens)`;
           }
 
           if (oldGrid) oldGrid.remove();
@@ -533,16 +541,16 @@
 
           const insertBefore = panel.querySelector('.walkin-section');
 
-          if (doc.queueEntries.length === 0) {
+          if (activeEntries.length === 0) {
             const noMsg = document.createElement('div');
             noMsg.className = 'no-entries-msg';
-            noMsg.innerHTML = `<%- icon('inbox') %> No tokens generated for this doctor yet.`;
+            noMsg.innerHTML = `<%- icon('inbox') %> No active tokens generated for this doctor.`;
             insertBefore.parentNode.insertBefore(noMsg, insertBefore);
           } else {
             const grid = document.createElement('div');
             grid.className = 'queue-grid';
 
-            doc.queueEntries.forEach(entry => {
+            activeEntries.forEach(entry => {
               const card = document.createElement('div');
               card.className = `queue-card ${entry.status}`;
 
@@ -564,7 +572,13 @@
                     <button class="btn btn-danger btn-sm" style="width:100%;">Skip</button>
                   </form>`;
               } else {
-                actionsHtml = `<div style="font-size:11px; color:var(--gray-400); width:100%; text-align:center;">Completed</div>`;
+                actionsHtml = `
+                  <div style="font-size:11px; color:var(--gray-400); width:100%; text-align:center; margin-bottom:6px;">
+                    ${entry.status === 'served' ? '✓ Served' : '⊘ Skipped'}
+                  </div>
+                  <button class="btn btn-ghost btn-sm"
+                          style="width:100%; font-size:11px; color:var(--gray-500);"
+                          onclick="deleteQueueEntry('${entry._id}', this)">🗑 Delete</button>`;
               }
 
               card.innerHTML = `
@@ -642,6 +656,30 @@
     card.style.transition = `opacity 0.3s ease ${i * 70}ms, transform 0.3s ease ${i * 70}ms`;
     requestAnimationFrame(() => { card.style.opacity = '1'; card.style.transform = 'translateY(0)'; });
   });
+
+  // ── Delete queue entry (instant DOM removal, no page reload) ──
+  function deleteQueueEntry(id, btn) {
+    if (!confirm('Remove this entry from the queue list?')) return;
+
+    // Instantly fade & collapse the card
+    const card = btn.closest('.queue-card');
+    if (card) {
+      card.style.transition = 'opacity 0.25s ease, transform 0.25s ease, max-height 0.3s ease, padding 0.3s ease, margin 0.3s ease';
+      card.style.opacity    = '0';
+      card.style.transform  = 'scale(0.94)';
+      card.style.overflow   = 'hidden';
+      setTimeout(() => {
+        card.style.maxHeight = '0';
+        card.style.padding   = '0';
+        card.style.margin    = '0';
+        setTimeout(() => card.remove(), 310);
+      }, 260);
+    }
+
+    // Tell the server silently — no redirect
+    fetch(`/receptionist/queue/${id}/delete`, { method: 'POST' })
+      .catch(err => console.error('Delete error:', err));
+  }
 </script>
 
 </body>

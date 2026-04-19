@@ -8,13 +8,63 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/mediflow.css">
   <style>
+    /* ── Notification banners ── */
+    #notification-area { margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px; }
+
+    .notif-banner {
+      display: flex; align-items: flex-start; gap: 14px;
+      padding: 16px 18px; border-radius: 12px;
+      animation: slideInNotif 0.35s ease;
+      position: relative;
+    }
+    @keyframes slideInNotif {
+      from { opacity: 0; transform: translateY(-10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .notif-banner.skipped   { background: #fff7ed; border: 1px solid #fed7aa; }
+    .notif-banner.reschedule { background: #f0fdf4; border: 1px solid #86efac; }
+    .notif-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .notif-icon svg { width: 18px; height: 18px; }
+    .notif-banner.skipped   .notif-icon { background: #fed7aa; color: #c2410c; }
+    .notif-banner.reschedule .notif-icon { background: #bbf7d0; color: #15803d; }
+    .notif-body { flex: 1; }
+    .notif-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+    .notif-banner.skipped   .notif-title { color: #9a3412; }
+    .notif-banner.reschedule .notif-title { color: #166534; }
+    .notif-msg  { font-size: 13px; color: #374151; line-height: 1.5; }
+    .notif-meta { margin-top: 6px; font-size: 12px; color: #6b7280; display: flex; gap: 14px; flex-wrap: wrap; }
+    .notif-meta strong { color: #111827; }
+    .notif-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .notif-btn {
+      padding: 6px 16px; border-radius: 8px; font-size: 13px;
+      border: 1px solid transparent;
+      font-weight: 700; cursor: pointer; border: none;
+      font-family: 'DM Sans', sans-serif; transition: all 0.15s;
+    }
+    .notif-btn.confirm { background: #16a34a; color: white; }
+    .notif-btn.confirm:hover { background: #15803d; }
+    .notif-btn.decline { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .notif-btn.decline:hover { background: #fecaca; }
+    .notif-dismiss {
+      position: absolute; top: 10px; right: 12px;
+      background: none; border: none; cursor: pointer;
+      color: #9ca3af; font-size: 18px; line-height: 1;
+      padding: 2px 6px; border-radius: 4px; transition: color 0.15s;
+    }
+    .notif-dismiss:hover { color: #374151; }
+
     /* ── Live queue hero card ── */
     .queue-status-card {
       background: linear-gradient(135deg, #0f3460, #1a56db);
       color: white; border-radius: var(--radius); padding: 32px 24px;
       text-align: center; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(26,86,219,0.25);
       position: relative; overflow: hidden;
+      transition: opacity 0.6s ease, transform 0.6s ease;
     }
+    .queue-status-card.fade-out { opacity: 0; transform: translateY(-12px); pointer-events: none; }
     .queue-status-card::before {
       content: ''; position: absolute; left: -80px; top: -80px;
       width: 240px; height: 240px; background: rgba(255,255,255,0.04);
@@ -26,11 +76,17 @@
       border-radius: 50%; pointer-events: none;
     }
 
+    .served-notice {
+      background: #f0fdf4; border: 1px solid #86efac; border-radius: var(--radius);
+      padding: 16px 20px; margin-bottom: 12px; font-size: 14px; font-weight: 600;
+      color: #166534; display: flex; align-items: center; gap: 10px;
+    }
+    .served-notice svg { width: 18px; height: 18px; }
+
     .token-display {
       font-size: 64px; font-weight: 800; font-family: 'DM Serif Display', serif;
       line-height: 1; margin: 16px 0; text-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
-
     .status-badge-live {
       display: inline-block; padding: 6px 16px; border-radius: 20px;
       font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
@@ -40,7 +96,6 @@
     .status-badge-live.called  { color: #bfdbfe; background: rgba(37,99,235,0.3); animation: pulse 2s infinite; }
     .status-badge-live.served  { color: #bbf7d0; background: rgba(22,163,74,0.3); }
     .status-badge-live.skipped { color: #fecaca; background: rgba(220,38,38,0.3); }
-
     @keyframes pulse {
       0%  { box-shadow: 0 0 0 0 rgba(37,99,235, 0.4); }
       70% { box-shadow: 0 0 0 10px rgba(37,99,235, 0); }
@@ -49,7 +104,9 @@
 
     .metrics-grid {
       display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px;
+      transition: opacity 0.6s ease;
     }
+    .metrics-grid.fade-out { opacity: 0; }
     .metric-card {
       background: white; border: 1px solid var(--gray-200);
       border-radius: var(--radius); padding: 20px; text-align: center;
@@ -67,21 +124,13 @@
       100%{ opacity: 0; transform: scale(0.8); }
     }
 
-    /* ── Section headers ── */
-    .section-header {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 16px; margin-top: 8px;
-    }
-    .section-header h2 {
-      font-size: 17px; font-weight: 700; color: var(--gray-900); margin: 0;
-    }
+    .section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; margin-top: 8px; }
+    .section-header h2 { font-size: 17px; font-weight: 700; color: var(--gray-900); margin: 0; }
     .section-header .section-count {
       background: var(--gray-100); color: var(--gray-600);
-      font-size: 11px; font-weight: 700; padding: 3px 10px;
-      border-radius: 20px;
+      font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px;
     }
 
-    /* ── Appointment cards ── */
     .appt-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; margin-bottom: 24px; }
     .appt-card {
       background: white; border: 1px solid var(--gray-200);
@@ -90,17 +139,11 @@
       transition: all 0.18s; position: relative;
     }
     .appt-card:hover { box-shadow: 0 4px 16px rgba(15,52,96,0.08); border-color: var(--gray-300); }
-    .appt-card-header {
-      display: flex; justify-content: space-between; align-items: flex-start;
-    }
+    .appt-card-header { display: flex; justify-content: space-between; align-items: flex-start; }
     .appt-doctor { font-weight: 700; font-size: 15px; color: var(--gray-900); }
     .appt-specialization { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
-    .appt-info-row {
-      display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--gray-600);
-    }
-    .appt-info-item {
-      display: flex; align-items: center; gap: 5px;
-    }
+    .appt-info-row { display: flex; gap: 18px; flex-wrap: wrap; font-size: 13px; color: var(--gray-600); }
+    .appt-info-item { display: flex; align-items: center; gap: 5px; }
     .appt-info-item svg { width: 14px; height: 14px; opacity: 0.5; }
     .appt-status-badge {
       display: inline-block; padding: 4px 12px; border-radius: 20px;
@@ -113,28 +156,19 @@
       display: flex; align-items: center; gap: 5px; margin-top: 2px;
     }
     .appt-card .appt-note svg { width: 13px; height: 13px; }
-
-    /* ── Checked-in indicator ── */
     .appt-card.checked-in { border-left: 4px solid #1a56db; }
     .appt-card.checked-in .appt-note { color: #1a56db; font-style: normal; font-weight: 600; }
 
-    /* ── Today highlight ── */
     .today-divider {
       display: flex; align-items: center; gap: 12px; margin: 28px 0 18px;
-      font-size: 12px; font-weight: 700; color: var(--gray-400); text-transform: uppercase;
-      letter-spacing: 0.08em;
+      font-size: 12px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.08em;
     }
-    .today-divider::before, .today-divider::after {
-      content: ''; flex: 1; height: 1px; background: var(--gray-200);
-    }
+    .today-divider::before, .today-divider::after { content: ''; flex: 1; height: 1px; background: var(--gray-200); }
     .today-dot {
       width: 8px; height: 8px; border-radius: 50%; background: #1a56db;
       animation: todayBlink 2s ease infinite;
     }
-    @keyframes todayBlink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
+    @keyframes todayBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
   </style>
 </head>
 <body>
@@ -144,29 +178,16 @@
     <div class="logo-wrap"><%- icon('hospital') %></div>
     <span class="brand-name">MediFlow</span>
   </div>
-
   <div class="sidebar-section-label">Navigation</div>
   <nav>
-    <a href="/user">
-      <span class="nav-icon"><%- icon('dashboard') %></span> Dashboard
-    </a>
-    <a href="/book">
-      <span class="nav-icon"><%- icon('calendar') %></span> Book Appointment
-    </a>
-    <a href="/appointments">
-      <span class="nav-icon"><%- icon('appointments') %></span> My Appointments
-    </a>
-    <a href="/user/profile">
-      <span class="nav-icon"><%- icon('profile') %></span> My Profile
-    </a>
-    <a href="/user/queue" class="active">
-      <span class="nav-icon"><%- icon('queue') %></span> Live Queue
-    </a>
+    <a href="/user"><span class="nav-icon"><%- icon('dashboard') %></span> Dashboard</a>
+    <a href="/book"><span class="nav-icon"><%- icon('calendar') %></span> Book Appointment</a>
+    <a href="/appointments"><span class="nav-icon"><%- icon('appointments') %></span> My Appointments</a>
+    <a href="/user/profile"><span class="nav-icon"><%- icon('profile') %></span> My Profile</a>
+    <a href="/user/queue" class="active"><span class="nav-icon"><%- icon('queue') %></span> Live Queue</a>
   </nav>
-
   <div class="sidebar-spacer"></div>
   <div class="sidebar-divider"></div>
-
   <% if (typeof curruser !== 'undefined' && curruser) { %>
   <div class="sidebar-user">
     <div class="avatar"><%= curruser.username[0].toUpperCase() %></div>
@@ -188,22 +209,12 @@
     <p>Track your appointments and live queue position in real-time.</p>
   </div>
 
-  <%
-    // Separate today's appointments from future ones
-    const todayAppts = appointments.filter(a => {
-      const d = new Date(a.date).toISOString().split('T')[0];
-      return d === today;
-    });
-    const futureAppts = appointments.filter(a => {
-      const d = new Date(a.date).toISOString().split('T')[0];
-      return d > today;
-    });
+  <!-- ═══════════ NOTIFICATION AREA ═══════════ -->
+  <div id="notification-area"></div>
 
-    // Build a map of appointmentId -> queueEntry for today's entries
-    const entryMap = {};
-    todayEntries.forEach(e => {
-      if (e.doctor) entryMap[e.doctor._id.toString()] = e;
-    });
+  <%
+    const todayAppts  = appointments.filter(a => new Date(a.date).toISOString().split('T')[0] === today);
+    const futureAppts = appointments.filter(a => new Date(a.date).toISOString().split('T')[0] > today);
   %>
 
   <!-- ═══════════ LIVE QUEUE — TODAY ═══════════ -->
@@ -214,12 +225,11 @@
         <div class="token-display">#<span class="ui-token"><%= entry.tokenNumber %></span></div>
         <div class="status-badge-live <%= entry.status %> ui-status"><%= entry.status %></div>
         <div style="margin-top:20px; font-size:15px; font-weight:500;">
-          Consulting with <strong>Dr. <%= entry.doctor.name %></strong>
+          Consulting with <strong><%= entry.doctor.name %></strong>
           <% if (entry.doctor.specialization) { %>
             <span style="opacity:0.7; font-size:13px;">&middot; <%= entry.doctor.specialization %></span>
           <% } %>
         </div>
-
         <div style="margin-top:24px; font-size:11px; font-weight:500; opacity:0.6; display:flex; align-items:center; justify-content:center; gap:6px;">
           <span class="loading-pulse"></span> Live updating every 10s
         </div>
@@ -240,49 +250,43 @@
         </div>
       </div>
 
-      <input type="hidden" class="entry-date" value="<%= entry.date %>">
-      <input type="hidden" class="entry-doctor" value="<%= entry.doctor._id %>">
+      <input type="hidden" class="entry-date"    value="<%= entry.date %>">
+      <input type="hidden" class="entry-doctor"  value="<%= entry.doctor._id %>">
       <input type="hidden" class="entry-patient" value="<%= curruser._id %>">
-      <input type="hidden" class="entry-id" value="<%= entry._id %>">
+      <input type="hidden" class="entry-id"      value="<%= entry._id %>">
     <% }) %>
   <% } %>
 
   <!-- ═══════════ TODAY'S APPOINTMENTS ═══════════ -->
   <% if (todayAppts.length > 0) { %>
-    <div class="today-divider">
-      <span class="today-dot"></span> Today's Appointments
-    </div>
+    <div class="today-divider"><span class="today-dot"></span> Today's Appointments</div>
     <div class="appt-cards">
       <% todayAppts.forEach(appt => {
-        const docId = appt.doctor ? appt.doctor._id.toString() : '';
         const hasEntry = todayEntries.some(e => e.appointment && e.appointment.toString() === appt._id.toString());
       %>
         <div class="appt-card<%= hasEntry ? ' checked-in' : '' %>">
           <div class="appt-card-header">
             <div>
-              <div class="appt-doctor">Dr. <%= appt.doctor ? appt.doctor.name : 'N/A' %></div>
+              <div class="appt-doctor"><%= appt.doctor ? appt.doctor.name : 'N/A' %></div>
               <div class="appt-specialization"><%= appt.doctor ? appt.doctor.specialization : '' %></div>
             </div>
             <span class="appt-status-badge <%= (appt.status || 'Pending').toLowerCase() %>"><%= appt.status || 'Pending' %></span>
           </div>
           <div class="appt-info-row">
-            <div class="appt-info-item">
-              <%- icon('calendar') %>
-              <span><%= new Date(appt.date).toDateString() %></span>
-            </div>
-            <div class="appt-info-item">
-              <%- icon('clock') %>
-              <span><%= appt.timeSlot %></span>
-            </div>
+            <div class="appt-info-item"><%- icon('calendar') %><span><%= new Date(appt.date).toDateString() %></span></div>
+            <div class="appt-info-item"><%- icon('clock') %><span><%= appt.timeSlot %></span></div>
           </div>
           <% if (hasEntry) { %>
-            <div class="appt-note">
-              <%- icon('check') %> Checked in — see live tracker above
+            <div class="appt-note"><%- icon('check') %> Checked in — see live tracker above</div>
+          <% } else if (appt.status === 'Completed') { %>
+            <div style="margin-top:2px; display:flex; justify-content:space-between; align-items:center;">
+              <div class="appt-note" style="color:var(--green); font-style:normal; font-weight:600;"><%- icon('check') %> Consultation Completed!</div>
+              <form style="display:inline;" action="/appointments/<%= appt._id %>/delete" method="POST" onsubmit="return confirm('Permanently delete this completed appointment?');">
+                <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red); font-size:11px; padding:4px 8px; border:1px solid #fee2e2; border-radius:6px;">Delete</button>
+              </form>
             </div>
           <% } else { %>
-            <div class="appt-note">
-              <%- icon('clock') %> Arrive at the reception to get your token
-            </div>
+            <div class="appt-note"><%- icon('clock') %> Arrive at the reception to get your token</div>
           <% } %>
         </div>
       <% }) %>
@@ -306,18 +310,10 @@
             <span class="appt-status-badge <%= (appt.status || 'Pending').toLowerCase() %>"><%= appt.status || 'Pending' %></span>
           </div>
           <div class="appt-info-row">
-            <div class="appt-info-item">
-              <%- icon('calendar') %>
-              <span><%= new Date(appt.date).toDateString() %></span>
-            </div>
-            <div class="appt-info-item">
-              <%- icon('clock') %>
-              <span><%= appt.timeSlot %></span>
-            </div>
+            <div class="appt-info-item"><%- icon('calendar') %><span><%= new Date(appt.date).toDateString() %></span></div>
+            <div class="appt-info-item"><%- icon('clock') %><span><%= appt.timeSlot %></span></div>
           </div>
-          <div class="appt-note">
-            <%- icon('clock') %> Queue will go live on appointment day
-          </div>
+          <div class="appt-note"><%- icon('clock') %> Queue will go live on appointment day</div>
         </div>
       <% }) %>
     </div>
@@ -335,61 +331,151 @@
 
   <!-- ═══════════ LIVE POLLING SCRIPT ═══════════ -->
   <script>
-    function fetchAllEntries() {
-      const entries = document.querySelectorAll('.entry-id');
-      entries.forEach(el => {
-        const container = el.closest('main') || document;
-        const id = el.value;
-        const dateEl = container.querySelector(`.entry-date`);
-        const doctorEl = container.querySelector(`.entry-doctor`);
-        const patientEl = container.querySelector(`.entry-patient`);
+    const renderedNotifIds = new Set();
+    const servedCards      = new Set();
 
-        // Find the associated card/metrics by entry ID
-        const card = document.getElementById('live-card-' + id);
-        const metrics = document.getElementById('metrics-' + id);
+    const iconWarning  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+    const iconCalendar = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+    const iconCheck    = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+    function dismissNotif(id, el) {
+      el.style.transition = 'opacity 0.3s, transform 0.3s';
+      el.style.opacity = '0'; el.style.transform = 'translateY(-8px)';
+      setTimeout(() => el.remove(), 320);
+      fetch(`/api/notifications/${id}/dismiss`, { method: 'POST' }).catch(() => {});
+    }
+
+    function renderSkipBanner(n) {
+      const area = document.getElementById('notification-area');
+      const div  = document.createElement('div');
+      div.className = 'notif-banner skipped'; div.id = 'notif-' + n._id;
+      div.innerHTML = `
+        <div class="notif-icon">${iconWarning}</div>
+        <div class="notif-body">
+          <div class="notif-title">You Were Skipped</div>
+          <div class="notif-msg">${n.message}</div>
+        </div>
+        <button class="notif-dismiss">✕</button>`;
+      div.querySelector('.notif-dismiss').addEventListener('click', () => dismissNotif(n._id, div));
+      area.prepend(div);
+    }
+
+    function renderRescheduleBanner(n) {
+      const area = document.getElementById('notification-area');
+      const div  = document.createElement('div');
+      div.className = 'notif-banner reschedule'; div.id = 'notif-' + n._id;
+      const origDate    = n.originalDate  ? new Date(n.originalDate).toDateString()  : '—';
+      const propDate    = n.proposedDate  ? new Date(n.proposedDate).toDateString()  : '—';
+      const propSlot    = n.proposedTimeSlot || '—';
+      const propDocName = n.proposedDoctorName || (n.proposedDoctor && n.proposedDoctor.name) || '—';
+      div.innerHTML = `
+        <div class="notif-icon">${iconCalendar}</div>
+        <div class="notif-body">
+          <div class="notif-title">📅 Appointment Rescheduled — Action Required</div>
+          <div class="notif-msg">${n.message}</div>
+          <div class="notif-meta">
+            <span>Was: <strong>${origDate} · ${n.originalTimeSlot || '—'}</strong></span>
+            <span>→ Now: <strong>${propDate} · ${propSlot} · Dr. ${propDocName}</strong></span>
+          </div>
+          <div class="notif-actions">
+            <form action="/appointments/${n.appointment}/confirm-reschedule" method="POST" style="display:inline;">
+              <button type="submit" class="notif-btn confirm"> ✓ Confirm New Schedule</button>
+            </form>
+            <form action="/appointments/${n.appointment}/decline-reschedule" method="POST" style="display:inline;"
+                  onsubmit="return confirm('This will cancel your appointment. Are you sure?')">
+              <button type="submit" class="notif-btn decline">✕ Cancel Booking</button>
+            </form>
+          </div>
+        </div>`;
+      area.prepend(div);
+    }
+
+    function fetchNotifications() {
+      fetch('/api/notifications')
+        .then(r => r.json())
+        .then(data => {
+          if (!data.notifications) return;
+          data.notifications.forEach(n => {
+            if (renderedNotifIds.has(n._id)) return;
+            renderedNotifIds.add(n._id);
+            if (n.type === 'skipped')             renderSkipBanner(n);
+            if (n.type === 'reschedule_proposed') renderRescheduleBanner(n);
+          });
+        })
+        .catch(() => {});
+    }
+
+    function fetchAllEntries() {
+      document.querySelectorAll('.entry-id').forEach(el => {
+        const id       = el.value;
+        const card     = document.getElementById('live-card-' + id);
+        const metrics  = document.getElementById('metrics-'   + id);
         if (!card || !metrics) return;
 
-        const date = el.previousElementSibling.previousElementSibling.previousElementSibling.value;
-        const doctorId = el.previousElementSibling.previousElementSibling.value;
-        const patientId = el.previousElementSibling.value;
+        let date, doctorId, patientId;
+        el.parentElement.querySelectorAll('.entry-date, .entry-doctor, .entry-patient').forEach(s => {
+          if (s.classList.contains('entry-date'))    date      = s.value;
+          if (s.classList.contains('entry-doctor'))  doctorId  = s.value;
+          if (s.classList.contains('entry-patient')) patientId = s.value;
+        });
 
         fetch(`/api/queue/status?date=${date}&doctorId=${doctorId}&patientId=${patientId}`)
-          .then(res => res.json())
+          .then(r => r.json())
           .then(data => {
             if (data.error) return;
 
-            // Update Token
             card.querySelector('.ui-token').textContent = data.tokenNumber;
-
-            // Update Status Badge
             const statusBadge = card.querySelector('.ui-status');
-            statusBadge.className = 'status-badge-live ' + data.status + ' ui-status';
+            statusBadge.className  = 'status-badge-live ' + data.status + ' ui-status';
             statusBadge.textContent = data.status;
 
-            // Update Metrics
-            const posEl  = metrics.querySelector('.ui-position');
-            const waitEl = metrics.querySelector('.ui-wait');
+            const posEl    = metrics.querySelector('.ui-position');
+            const waitEl   = metrics.querySelector('.ui-wait');
             const calledEl = metrics.querySelector('.ui-called');
 
-            if (data.status === 'served' || data.status === 'skipped') {
-              posEl.textContent = '-';
+            if (data.status === 'served') {
+              if (!servedCards.has(id)) {
+                servedCards.add(id);
+                posEl.textContent  = '✓';
+                waitEl.textContent = '0';
+                setTimeout(() => {
+                  card.classList.add('fade-out');
+                  metrics.classList.add('fade-out');
+                  setTimeout(() => {
+                    const notice = document.createElement('div');
+                    notice.className = 'served-notice';
+                    notice.innerHTML = `${iconCheck} You have been served. Thank you for your visit!`;
+                    card.parentNode.insertBefore(notice, card);
+                    card.remove(); metrics.remove();
+                    setTimeout(() => {
+                      notice.style.transition = 'opacity 0.5s';
+                      notice.style.opacity = '0';
+                      setTimeout(() => notice.remove(), 520);
+                    }, 60000);
+                  }, 650);
+                }, 1200);
+              }
+            } else if (data.status === 'skipped') {
+              posEl.textContent  = '-';
               waitEl.textContent = '-';
             } else if (data.status === 'called') {
-              posEl.textContent = "It's your turn!";
-              posEl.style.fontSize = "18px";
+              posEl.textContent  = "It's your turn!";
+              posEl.style.fontSize = '18px';
               waitEl.textContent = '0';
             } else {
-              posEl.textContent = data.position;
-              posEl.style.fontSize = "28px";
+              posEl.textContent  = data.position;
+              posEl.style.fontSize = '28px';
               waitEl.textContent = data.estimatedWaitMinutes;
             }
             calledEl.textContent = data.calledToken ? '#' + data.calledToken : 'None';
           })
-          .catch(err => console.log('Error fetching queue status:', err));
+          .catch(() => {});
       });
     }
 
-    // Fetch immediately on load, then every 10 seconds
+    fetchNotifications();
+    setInterval(fetchNotifications, 10000);
+
     <% if (todayEntries && todayEntries.length > 0) { %>
       fetchAllEntries();
       setInterval(fetchAllEntries, 10000);

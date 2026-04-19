@@ -131,6 +131,22 @@
     }
     .emergency-status-bar.visible { display: flex; }
     .emergency-status-bar svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+    /* Pending-approval micro-badge */
+    .badge-reschedule-pending {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10px; font-weight: 700; padding: 2px 7px;
+      border-radius: 5px; background: #fef9c3; color: #92400e;
+      margin-left: 4px; vertical-align: middle;
+    }
+
+    /* Late micro-badge */
+    .badge-late {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10px; font-weight: 800; padding: 2px 7px;
+      border-radius: 5px; background: #fee2e2; color: #991b1b;
+      margin-left: 4px; vertical-align: middle; border: 1px solid #f87171;
+    }
   </style>
 </head>
 <body>
@@ -282,6 +298,7 @@
             const bc = s === 'confirmed' ? 'badge-confirmed' : s === 'cancelled' ? 'badge-cancelled' : 'badge-pending';
             const dateVal = appt.date ? appt.date.toISOString().split('T')[0] : '';
             const doctorId = appt.doctor ? appt.doctor._id.toString() : '';
+            const apptLate = isLate(appt);
           %>
           <tr data-status="<%= s %>"
               data-search="<%= (appt.user ? appt.user.username : '').toLowerCase() %> <%= appt.doctor ? appt.doctor.name.toLowerCase() : '' %>">
@@ -300,7 +317,15 @@
 
             <td><%= new Date(appt.date).toDateString() %></td>
             <td><%= appt.timeSlot %></td>
-            <td><span class="badge <%= bc %>"><%= appt.status || 'Pending' %></span></td>
+            <td>
+              <span class="badge <%= bc %>"><%= appt.status || 'Pending' %></span>
+              <% if (apptLate) { %>
+                <span class="badge-late">LATE</span>
+              <% } %>
+              <% if (appt.reschedulePending) { %>
+                <span class="badge-reschedule-pending">⏳ Awaiting Patient</span>
+              <% } %>
+            </td>
 
             <td>
               <div class="actions-cell">
@@ -321,12 +346,22 @@
                 <% } %>
 
                 <% if (s !== 'cancelled') { %>
-                <form style="display:inline;" action="/receptionist/cancel/<%= appt._id %>" method="POST">
-                  <button type="submit" class="btn btn-danger btn-sm"
-                    onclick="return confirm('Cancel this appointment?')">
-                    <%- icon('x') %> Cancel
-                  </button>
-                </form>
+                  <% if (apptLate) { %>
+                    <form style="display:inline;" action="/receptionist/cancel/<%= appt._id %>" method="POST">
+                      <button type="submit" class="btn btn-danger btn-sm"
+                        style="background-color: #991b1b;"
+                        onclick="return confirm('Kick out this late patient and cancel appointment?')">
+                        <%- icon('x') %> Kick Out
+                      </button>
+                    </form>
+                  <% } else { %>
+                    <form style="display:inline;" action="/receptionist/cancel/<%= appt._id %>" method="POST">
+                      <button type="submit" class="btn btn-danger btn-sm"
+                        onclick="return confirm('Cancel this appointment?')">
+                        <%- icon('x') %> Cancel
+                      </button>
+                    </form>
+                  <% } %>
                 <% } %>
               </div>
             </td>
@@ -385,7 +420,10 @@
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-ghost" id="modalCancel">Cancel</button>
-      <button type="button" class="btn btn-warning" id="modalSubmit"><%- icon('edit') %> Save Schedule</button>
+      <button type="button" class="btn btn-warning" id="modalSubmit"><%- icon('edit') %> Propose Reschedule</button>
+    </div>
+    <div style="padding: 0 22px 14px; font-size: 11px; color: var(--gray-400); display: flex; align-items: center; gap: 5px;">
+      <%- icon('warning') %> Patient will be notified and must confirm this change.
     </div>
   </div>
 </div>
