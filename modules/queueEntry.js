@@ -33,9 +33,17 @@ const queueEntrySchema = new Schema({
     enum: ['waiting', 'called', 'served', 'skipped'],
     default: 'waiting'
   },
+  checkedInPhysically: {
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  dismissedByPatient: {
+    type: Boolean,
+    default: false
   }
 });
 

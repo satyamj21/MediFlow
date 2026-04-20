@@ -119,7 +119,7 @@
          <div class="notif-icon" style="background: #fecaca; color: #b91c1c;"><%- icon('warning') %></div>
          <div class="notif-body">
            <div class="notif-title" style="color: #991b1b;">Missed Appointment Slot</div>
-           <div class="notif-msg">You missed your scheduled time for <strong>Dr. <%= appt.doctor.name %></strong> at <%= appt.timeSlot %> on <%= new Date(appt.date).toDateString() %>. Please wait for receptionist instructions or cancel the appointment if you cannot make it.</div>
+           <div class="notif-msg">You missed your scheduled time for <strong><%= appt.doctor.name %></strong> at <%= appt.timeSlot %> on <%= new Date(appt.date).toDateString() %>. Please wait for receptionist instructions or cancel the appointment if you cannot make it.</div>
            <div class="notif-actions">
              <form style="display:inline;" action="/cancel/<%= appt._id %>" method="POST" onsubmit="return confirm('Cancel this appointment?')">
                <button type="submit" class="notif-btn decline">Cancel Appointment</button>
@@ -254,7 +254,7 @@
         <div class="notif-msg">${n.message}</div>
         <div class="notif-meta">
           <span>Was: <strong>${origDate} · ${n.originalTimeSlot || '—'}</strong></span>
-          <span>→ Now: <strong>${propDate} · ${propSlot} · Dr. ${propDocName}</strong></span>
+          <span>→ Now: <strong>${propDate} · ${propSlot} · ${propDocName}</strong></span>
         </div>
         <div class="notif-actions">
           <form action="/appointments/${n.appointment}/confirm-reschedule" method="POST" style="display:inline;">

@@ -12,6 +12,7 @@ const DailyReport = require("./modules/dailyReport");
 const Emergency = require("./modules/emergency");
 const QueueEntry = require("./modules/queueEntry");
 const Notification = require("./modules/notification");
+const { assignToken, removeTokenForAppointment, MINS_PER_PATIENT } = require("./modules/queueHelper");
 const flash = require("connect-flash");
 
 app.set("view engine", "ejs");
@@ -122,6 +123,12 @@ function isReceptionist(req, res, next) {
   next();
 }
 
+function isDoctor(req, res, next) {
+  if (!req.isAuthenticated()) return res.redirect("/login");
+  if (req.user.role !== "doctor") return res.redirect("/home");
+  next();
+}
+
 // ════════════════════════════════════════════════════════════
 //  PUBLIC ROUTES
 // ════════════════════════════════════════════════════════════
@@ -179,6 +186,7 @@ app.post(
     if (selectrole === actualrole) {
       if (actualrole === "user")         return res.redirect("/user");
       if (actualrole === "receptionist") return res.redirect("/receptionist");
+      if (actualrole === "doctor")       return res.redirect("/doctor");
       return res.redirect("/home");
     } else {
       req.logout(() => {
@@ -285,12 +293,12 @@ app.get("/user/queue", isLoggedIn, async (req, res) => {
       status: { $ne: "Cancelled" }
     }).populate("doctor").sort({ date: 1 });
 
-    // Today's queue entries for this patient
+    // Today's queue entries for this patient (include all statuses so served shows briefly)
     const todayEntries = await QueueEntry.find({
       patient: req.user._id,
       date: today,
-      status: { $nin: ["served", "skipped"] }
-    }).populate("doctor").sort({ tokenNumber: 1 });
+      dismissedByPatient: { $ne: true }
+    }).populate("doctor").populate("appointment").sort({ tokenNumber: 1 });
 
     res.render("trial/user-queue", { appointments, todayEntries, today });
   } catch (err) {
@@ -300,27 +308,42 @@ app.get("/user/queue", isLoggedIn, async (req, res) => {
   }
 });
 
+// ── Dismiss queue notification ────────────────────────────
+app.post("/api/queue/:id/dismiss", async (req, res) => {
+  try {
+    await QueueEntry.findByIdAndUpdate(req.params.id, { dismissedByPatient: true });
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ error: "Server error" });
+  }
+});
+
 // ── Polling endpoint for queue status ─────────────────────
 app.get("/api/queue/status", async (req, res) => {
   try {
     const { date, doctorId, patientId } = req.query;
     if (!date || !doctorId || !patientId) return res.json({ error: "Missing parameters" });
 
-    const userEntry = await QueueEntry.findOne({ patient: patientId, date, doctor: doctorId }).sort({ createdAt: -1 });
+    const userEntry = await QueueEntry.findOne({ patient: patientId, date, doctor: doctorId })
+      .populate("doctor")
+      .populate("appointment")
+      .sort({ createdAt: -1 });
     if (!userEntry) return res.json({ error: "Not found" });
 
-    // Calculate position: how many are waiting before this token
+    // Calculate position: how many waiting entries have a lower token number
+    let aheadOfYou = 0;
     let position = 0;
     if (userEntry.status === "waiting") {
-      position = await QueueEntry.countDocuments({
+      aheadOfYou = await QueueEntry.countDocuments({
         doctor: doctorId,
         date: date,
         status: "waiting",
-        tokenNumber: { $lte: userEntry.tokenNumber }
+        tokenNumber: { $lt: userEntry.tokenNumber }
       });
+      position = aheadOfYou + 1;
     }
 
-    const estimatedWaitMinutes = position > 0 ? (position - 1) * 10 : 0;
+    const estimatedWaitMinutes = aheadOfYou * MINS_PER_PATIENT;
 
     const calledEntry = await QueueEntry.findOne({ doctor: doctorId, date, status: "called" }).sort({ createdAt: -1 });
     const calledToken = calledEntry ? calledEntry.tokenNumber : null;
@@ -331,11 +354,63 @@ app.get("/api/queue/status", async (req, res) => {
     res.json({
       tokenNumber: userEntry.tokenNumber,
       status: userEntry.status,
+      checkedInPhysically: userEntry.checkedInPhysically || false,
       position,
       estimatedWaitMinutes,
       calledToken,
       totalWaiting,
-      totalServed
+      totalServed,
+      aheadOfYou,
+      appointmentTimeSlot: userEntry.appointment ? userEntry.appointment.timeSlot : null,
+      doctorName: userEntry.doctor ? userEntry.doctor.name : null
+    });
+  } catch (err) {
+    res.json({ error: "Server error" });
+  }
+});
+
+// ── Authenticated patient token lookup ─────────────────────
+app.get("/api/queue/my-token", isLoggedIn, async (req, res) => {
+  try {
+    const { date, doctorId } = req.query;
+    if (!date || !doctorId) return res.json({ error: "Missing parameters" });
+
+    const userEntry = await QueueEntry.findOne({ patient: req.user._id, date, doctor: doctorId })
+      .populate("doctor")
+      .populate("appointment")
+      .sort({ createdAt: -1 });
+    if (!userEntry) return res.json({ error: "Not found" });
+
+    let aheadOfYou = 0;
+    let position = 0;
+    if (userEntry.status === "waiting") {
+      aheadOfYou = await QueueEntry.countDocuments({
+        doctor: doctorId,
+        date: date,
+        status: "waiting",
+        tokenNumber: { $lt: userEntry.tokenNumber }
+      });
+      position = aheadOfYou + 1;
+    }
+
+    const estimatedWaitMinutes = aheadOfYou * MINS_PER_PATIENT;
+    const calledEntry = await QueueEntry.findOne({ doctor: doctorId, date, status: "called" }).sort({ createdAt: -1 });
+    const calledToken = calledEntry ? calledEntry.tokenNumber : null;
+    const totalWaiting = await QueueEntry.countDocuments({ doctor: doctorId, date, status: "waiting" });
+    const totalServed  = await QueueEntry.countDocuments({ doctor: doctorId, date, status: "served" });
+
+    res.json({
+      tokenNumber: userEntry.tokenNumber,
+      status: userEntry.status,
+      checkedInPhysically: userEntry.checkedInPhysically || false,
+      position,
+      estimatedWaitMinutes,
+      calledToken,
+      totalWaiting,
+      totalServed,
+      aheadOfYou,
+      appointmentTimeSlot: userEntry.appointment ? userEntry.appointment.timeSlot : null,
+      doctorName: userEntry.doctor ? userEntry.doctor.name : null
     });
   } catch (err) {
     res.json({ error: "Server error" });
@@ -436,13 +511,21 @@ app.get("/api/queue/live-data", async (req, res) => {
           status: q.status,
           patientName: q.patientName || "Walk-in",
         })),
-        scheduledAppts: docAppts.map(a => ({
-          _id: a._id,
-          patientName: a.user ? (a.user.fullName || a.user.username) : "Unknown",
-          timeSlot: a.timeSlot,
-          status: a.status,
-          isQueued: queuedAppointmentIds.has(a._id.toString()),
-        })),
+        scheduledAppts: docAppts.map(a => {
+          // Find matching queue entry for this appointment
+          const matchingQueueEntry = allQueueEntries.find(
+            q => q.appointment && q.appointment._id.toString() === a._id.toString()
+          );
+          return {
+            _id: a._id,
+            patientName: a.user ? (a.user.fullName || a.user.username) : "Unknown",
+            timeSlot: a.timeSlot,
+            status: a.status,
+            isQueued: queuedAppointmentIds.has(a._id.toString()),
+            tokenNumber: matchingQueueEntry ? matchingQueueEntry.tokenNumber : null,
+            checkedInPhysically: matchingQueueEntry ? matchingQueueEntry.checkedInPhysically : false,
+          };
+        }),
       };
     });
 
@@ -519,7 +602,30 @@ app.get("/reschedule/:id", isLoggedIn, async (req, res) => {
 app.post("/reschedule/:id", isLoggedIn, async (req, res) => {
   try {
     const { doctor, date, timeSlot } = req.body;
+    const appt = await Appointment.findById(req.params.id).populate("user");
     await Appointment.findByIdAndUpdate(req.params.id, { doctor, date, timeSlot });
+
+    // If appointment was confirmed and had a queue entry, reassign token
+    if (appt && appt.status === "Confirmed") {
+      const oldEntry = await QueueEntry.findOne({ appointment: appt._id, status: "waiting" });
+      const newDateStr = new Date(date + "T00:00:00.000Z").toISOString().split("T")[0];
+      const today = new Date().toISOString().split("T")[0];
+      if (newDateStr >= today) {
+        const patientUser = appt.user || await User.findById(appt.user);
+        await assignToken({
+          doctorId: doctor,
+          dateStr: newDateStr,
+          newTimeSlot: timeSlot,
+          patientId: patientUser ? patientUser._id : null,
+          patientName: patientUser ? (patientUser.fullName || patientUser.username) : "Unknown",
+          appointmentId: appt._id,
+          existingEntryId: oldEntry ? oldEntry._id : null
+        });
+      } else if (oldEntry) {
+        await removeTokenForAppointment(appt._id);
+      }
+    }
+
     req.flash("success", "Appointment rescheduled successfully!");
     res.redirect("/appointments");
   } catch (err) {
@@ -533,6 +639,8 @@ app.post("/reschedule/:id", isLoggedIn, async (req, res) => {
 app.post("/cancel/:id", isLoggedIn, async (req, res) => {
   try {
     await Appointment.findByIdAndUpdate(req.params.id, { status: "Cancelled" });
+    // Remove queue entry and renumber tokens
+    await removeTokenForAppointment(req.params.id);
     req.flash("success", "Appointment cancelled.");
     res.redirect("/appointments");
   } catch (err) {
@@ -558,11 +666,15 @@ app.post("/appointments/:id/delete", isLoggedIn, async (req, res) => {
 // ── Patient: confirm proposed reschedule ──────────────────
 app.post("/appointments/:id/confirm-reschedule", isLoggedIn, async (req, res) => {
   try {
-    const appt = await Appointment.findById(req.params.id);
+    const appt = await Appointment.findById(req.params.id).populate("user");
     if (!appt || !appt.reschedulePending) {
       req.flash("error", "No pending reschedule found.");
       return res.redirect("/appointments");
     }
+
+    // Find old queue entry before we apply changes
+    const oldEntry = await QueueEntry.findOne({ appointment: appt._id, status: "waiting" });
+
     // Apply proposed changes
     await Appointment.findByIdAndUpdate(req.params.id, {
       date: appt.proposedDate,
@@ -574,6 +686,25 @@ app.post("/appointments/:id/confirm-reschedule", isLoggedIn, async (req, res) =>
       proposedDoctor: null,
       status: "Confirmed",
     });
+
+    // Reassign token at the new position
+    const newDateStr = new Date(appt.proposedDate).toISOString().split("T")[0];
+    const today = new Date().toISOString().split("T")[0];
+    if (newDateStr >= today) {
+      const patientUser = appt.user || await User.findById(appt.user);
+      await assignToken({
+        doctorId: appt.proposedDoctor,
+        dateStr: newDateStr,
+        newTimeSlot: appt.proposedTimeSlot,
+        patientId: patientUser ? patientUser._id : null,
+        patientName: patientUser ? (patientUser.fullName || patientUser.username) : "Unknown",
+        appointmentId: appt._id,
+        existingEntryId: oldEntry ? oldEntry._id : null
+      });
+    } else if (oldEntry) {
+      await removeTokenForAppointment(appt._id);
+    }
+
     // Mark the notification read
     await Notification.updateMany(
       { user: req.user._id, appointment: appt._id, type: "reschedule_proposed", isRead: false },
@@ -711,7 +842,7 @@ app.post("/receptionist/reschedule/:id", isReceptionist, async (req, res) => {
         user: appt.user._id,
         type: "reschedule_proposed",
         appointment: appt._id,
-        message: `Your appointment has been rescheduled to ${proposedDateObj.toDateString()} at ${timeSlot} with Dr. ${proposedDoctorName}. Please confirm or cancel.`,
+        message: `Your appointment has been rescheduled to ${proposedDateObj.toDateString()} at ${timeSlot} with ${proposedDoctorName}. Please confirm or cancel.`,
         proposedDate: proposedDateObj,
         proposedTimeSlot: timeSlot,
         proposedDoctor: doctor,
@@ -734,8 +865,30 @@ app.post("/receptionist/reschedule/:id", isReceptionist, async (req, res) => {
 // ── Confirm appointment ───────────────────────────────────
 app.post("/receptionist/confirm/:id", isReceptionist, async (req, res) => {
   try {
+    const appt = await Appointment.findById(req.params.id).populate("user").populate("doctor");
     await Appointment.findByIdAndUpdate(req.params.id, { status: "Confirmed" });
-    req.flash("success", "Appointment confirmed.");
+
+    // Auto-assign token at confirmation
+    const dateStr = appt.date.toISOString().split("T")[0];
+    const today = new Date().toISOString().split("T")[0];
+
+    // Only assign token for today or future dates
+    if (dateStr >= today) {
+      const existing = await QueueEntry.findOne({ appointment: appt._id });
+      if (!existing) {
+        await assignToken({
+          doctorId: appt.doctor._id,
+          dateStr,
+          newTimeSlot: appt.timeSlot,
+          patientId: appt.user ? appt.user._id : null,
+          patientName: appt.user ? (appt.user.fullName || appt.user.username) : "Unknown",
+          appointmentId: appt._id,
+          existingEntryId: null
+        });
+      }
+    }
+
+    req.flash("success", "Appointment confirmed and token assigned.");
     res.redirect("/receptionist");
   } catch (err) {
     console.log(err);
@@ -748,6 +901,8 @@ app.post("/receptionist/confirm/:id", isReceptionist, async (req, res) => {
 app.post("/receptionist/cancel/:id", isReceptionist, async (req, res) => {
   try {
     await Appointment.findByIdAndUpdate(req.params.id, { status: "Cancelled" });
+    // Remove queue entry and renumber tokens
+    await removeTokenForAppointment(req.params.id);
     req.flash("success", "Appointment cancelled.");
     res.redirect("/receptionist");
   } catch (err) {
@@ -810,36 +965,34 @@ app.post("/receptionist/queue/checkin/:id", isReceptionist, async (req, res) => 
 
     const dateParam = appt.date.toISOString().split("T")[0];
 
-    // Check if already checked in
+    // Check if queue entry already exists (pre-assigned at confirmation)
     const existing = await QueueEntry.findOne({ appointment: appt._id });
     if (existing) {
-      req.flash("error", "This appointment is already checked in.");
+      if (existing.checkedInPhysically) {
+        req.flash("error", "This patient has already arrived.");
+        return res.redirect(`/receptionist/queue?date=${dateParam}`);
+      }
+      // Mark as physically arrived — do NOT create a new entry or reassign token
+      await QueueEntry.findByIdAndUpdate(existing._id, { checkedInPhysically: true });
+      req.flash("success", `${existing.patientName} marked as arrived (Token #${existing.tokenNumber}).`);
       return res.redirect(`/receptionist/queue?date=${dateParam}`);
     }
 
-    // Get next token number for this doctor on this date
-    const highestToken = await QueueEntry.findOne({
-      doctor: appt.doctor._id,
-      date: dateParam
-    }).sort({ tokenNumber: -1 });
-
-    const newToken = highestToken ? highestToken.tokenNumber + 1 : 1;
-
-    const newEntry = new QueueEntry({
-      appointment: appt._id,
-      patient: appt.user ? appt.user._id : null,
-      patientName: appt.user ? (appt.user.fullName || appt.user.username) : "Unknown",
-      doctor: appt.doctor._id,
-      date: dateParam,
-      tokenNumber: newToken,
-      status: "waiting"
-    });
-    await newEntry.save();
-
-    // Mark appointment as Confirmed (patient has arrived)
+    // Fallback: no pre-assigned entry exists — create one via assignToken
     await Appointment.findByIdAndUpdate(appt._id, { status: "Confirmed" });
+    const newEntry = await assignToken({
+      doctorId: appt.doctor._id,
+      dateStr: dateParam,
+      newTimeSlot: appt.timeSlot,
+      patientId: appt.user ? appt.user._id : null,
+      patientName: appt.user ? (appt.user.fullName || appt.user.username) : "Unknown",
+      appointmentId: appt._id,
+      existingEntryId: null
+    });
+    // Mark as physically arrived since they're checking in now
+    await QueueEntry.findByIdAndUpdate(newEntry._id, { checkedInPhysically: true });
 
-    req.flash("success", `Checked in! Token #${newToken} assigned to ${newEntry.patientName}.`);
+    req.flash("success", `Checked in! Token #${newEntry.tokenNumber} assigned to ${newEntry.patientName}.`);
     res.redirect(`/receptionist/queue?date=${dateParam}`);
   } catch (err) {
     console.log(err);
@@ -925,7 +1078,7 @@ app.post("/receptionist/queue/:id/skip", isReceptionist, async (req, res) => {
         user: entry.patient,
         type: "skipped",
         appointment: entry.appointment || null,
-        message: `Your token #${entry.tokenNumber} was skipped in Dr. ${doctorName}'s queue. Please check with the reception desk to rejoin the queue.`,
+        message: `Your token #${entry.tokenNumber} was skipped in ${doctorName}'s queue. Please check with the reception desk to rejoin the queue.`,
       });
     }
 
@@ -1177,6 +1330,91 @@ app.post("/receptionist/emergency/clear", isReceptionist, async (req, res) => {
     console.log(err);
     req.flash("error", "Could not clear emergency alert.");
     res.redirect("/receptionist");
+  }
+});
+
+// ════════════════════════════════════════════════════════════
+//  DOCTOR ROUTES
+// ════════════════════════════════════════════════════════════
+
+app.get("/doctor", isDoctor, async (req, res) => {
+  try {
+    const today = new Date().toISOString().split("T")[0];
+    const selectedDate = req.query.date || today;
+    const dateStart = new Date(selectedDate + "T00:00:00.000Z");
+    const dateEnd   = new Date(selectedDate + "T23:59:59.999Z");
+
+    // Find the Doctor document whose name matches the logged-in user's username or fullName.
+    // Doctor accounts are linked by matching the User's username to Doctor.name (case-insensitive).
+    const allDoctors = await Doctor.find();
+    const linkedDoctor = allDoctors.find(d =>
+      d.name.toLowerCase() === (req.user.fullName || req.user.username).toLowerCase()
+    );
+
+    let datePatients = [];
+    let doctorName = req.user.fullName || req.user.username;
+    let specialization = "";
+
+    // Upcoming appointments (next 30 days) for the calendar sidebar
+    let upcomingAppointments = [];
+
+    if (linkedDoctor) {
+      doctorName = linkedDoctor.name;
+      specialization = linkedDoctor.specialization;
+
+      datePatients = await Appointment.find({
+        doctor: linkedDoctor._id,
+        date: { $gte: dateStart, $lte: dateEnd },
+        status: { $in: ["Confirmed", "Pending", "Completed"] }
+      })
+        .populate("user")
+        .sort({ timeSlot: 1 });
+
+      // Fetch upcoming 30 days of appointments for calendars
+      const futureEnd = new Date(today + "T00:00:00.000Z");
+      futureEnd.setDate(futureEnd.getDate() + 30);
+      upcomingAppointments = await Appointment.find({
+        doctor: linkedDoctor._id,
+        date: { $gte: new Date(today + "T00:00:00.000Z"), $lte: futureEnd },
+        status: { $in: ["Confirmed", "Pending", "Completed"] }
+      })
+        .populate("user")
+        .sort({ date: 1, timeSlot: 1 });
+    }
+
+    // For each appointment, check if there's a QueueEntry to get token number and queue status
+    const queueEntries = await QueueEntry.find({
+      date: selectedDate,
+      doctor: linkedDoctor ? linkedDoctor._id : null
+    });
+
+    const queueMap = {};
+    queueEntries.forEach(q => {
+      if (q.appointment) queueMap[q.appointment.toString()] = q;
+    });
+
+    // Build a map of dates that have appointments (for calendar highlighting)
+    const appointmentDates = {};
+    upcomingAppointments.forEach(a => {
+      const d = a.date.toISOString().split("T")[0];
+      appointmentDates[d] = (appointmentDates[d] || 0) + 1;
+    });
+
+    res.render("trial/doctor-dashboard", {
+      todayPatients: datePatients,
+      queueMap,
+      doctorName,
+      specialization,
+      today,
+      selectedDate,
+      linkedDoctor,
+      upcomingAppointments,
+      appointmentDates: JSON.stringify(appointmentDates)
+    });
+  } catch (err) {
+    console.log(err);
+    req.flash("error", "Error loading doctor dashboard.");
+    res.redirect("/home");
   }
 });
 

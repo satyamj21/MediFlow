@@ -9,6 +9,8 @@ const userSchema = new Schema({
   },
   role: {
     type: String,
+    enum: ["user", "receptionist", "doctor"],
+    default: "user",
   },
 
   // ── Patient Profile Fields (optional, backward-compatible) ─────────────

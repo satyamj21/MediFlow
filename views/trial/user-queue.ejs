@@ -23,6 +23,7 @@
     }
     .notif-banner.skipped   { background: #fff7ed; border: 1px solid #fed7aa; }
     .notif-banner.reschedule { background: #f0fdf4; border: 1px solid #86efac; }
+    .notif-banner.token_update { background: #eff6ff; border: 1px solid #bfdbfe; }
     .notif-icon {
       width: 38px; height: 38px; border-radius: 10px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
@@ -30,10 +31,12 @@
     .notif-icon svg { width: 18px; height: 18px; }
     .notif-banner.skipped   .notif-icon { background: #fed7aa; color: #c2410c; }
     .notif-banner.reschedule .notif-icon { background: #bbf7d0; color: #15803d; }
+    .notif-banner.token_update .notif-icon { background: #bfdbfe; color: #1d4ed8; }
     .notif-body { flex: 1; }
     .notif-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
     .notif-banner.skipped   .notif-title { color: #9a3412; }
     .notif-banner.reschedule .notif-title { color: #166534; }
+    .notif-banner.token_update .notif-title { color: #1e40af; }
     .notif-msg  { font-size: 13px; color: #374151; line-height: 1.5; }
     .notif-meta { margin-top: 6px; font-size: 12px; color: #6b7280; display: flex; gap: 14px; flex-wrap: wrap; }
     .notif-meta strong { color: #111827; }
@@ -59,10 +62,29 @@
     /* ── Live queue hero card ── */
     .queue-status-card {
       background: linear-gradient(135deg, #0f3460, #1a56db);
-      color: white; border-radius: var(--radius); padding: 32px 24px;
-      text-align: center; margin-bottom: 24px; box-shadow: 0 8px 24px rgba(26,86,219,0.25);
+      color: white; border-radius: var(--radius); padding: 28px 24px;
+      margin-bottom: 20px; box-shadow: 0 8px 24px rgba(26,86,219,0.25);
       position: relative; overflow: hidden;
-      transition: opacity 0.6s ease, transform 0.6s ease;
+      transition: background 0.6s ease, opacity 0.6s ease, transform 0.6s ease;
+    }
+    .queue-status-card.is-late {
+      background: linear-gradient(135deg, #7f1d1d, #dc2626);
+      box-shadow: 0 8px 24px rgba(220,38,38,0.3);
+    }
+    .queue-late-banner {
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(255,255,255,0.15); backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.25); border-radius: 10px;
+      padding: 12px 16px; margin-top: 16px;
+      position: relative; z-index: 1;
+      animation: latePulse 2s ease-in-out infinite;
+    }
+    .queue-late-banner svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .queue-late-banner .late-title { font-size: 13px; font-weight: 700; }
+    .queue-late-banner .late-msg { font-size: 11.5px; font-weight: 400; opacity: 0.85; margin-top: 2px; }
+    @keyframes latePulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.8; }
     }
     .queue-status-card.fade-out { opacity: 0; transform: translateY(-12px); pointer-events: none; }
     .queue-status-card::before {
@@ -76,43 +98,71 @@
       border-radius: 50%; pointer-events: none;
     }
 
+    .queue-card-top {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      flex-wrap: wrap; gap: 12px; position: relative; z-index: 1;
+    }
+    .queue-card-doctor { font-size: 15px; font-weight: 600; opacity: 0.9; }
+    .queue-card-doctor strong { font-weight: 700; opacity: 1; }
+    .queue-card-spec { font-size: 12px; opacity: 0.6; margin-top: 2px; }
+    .queue-card-time { font-size: 13px; font-weight: 600; opacity: 0.8; display: flex; align-items: center; gap: 6px; }
+    .queue-card-time svg { width: 14px; height: 14px; }
+
+    .queue-card-body {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+      margin-top: 20px; position: relative; z-index: 1;
+    }
+    .queue-card-token {
+      grid-column: 1 / -1; text-align: center; padding: 12px 0;
+    }
+    .token-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.7; }
+    .token-display {
+      font-size: 56px; font-weight: 800; font-family: 'DM Serif Display', serif;
+      line-height: 1; margin: 8px 0; text-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .queue-stat {
+      background: rgba(255,255,255,0.1); backdrop-filter: blur(6px);
+      border-radius: 10px; padding: 12px 14px; text-align: center;
+    }
+    .queue-stat-value { font-size: 22px; font-weight: 800; margin-bottom: 2px; }
+    .queue-stat-label { font-size: 11px; font-weight: 600; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.04em; }
+
+    /* Status badge */
+    .status-badge-live {
+      display: inline-block; padding: 6px 18px; border-radius: 20px;
+      font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+      margin-top: 16px; position: relative; z-index: 1;
+    }
+    .status-badge-live.s-waiting { color: #bfdbfe; background: rgba(59,130,246,0.3); }
+    .status-badge-live.s-next { color: #fef08a; background: rgba(234,179,8,0.35); animation: pulseNext 2s infinite; }
+    .status-badge-live.s-called { color: #fecaca; background: rgba(239,68,68,0.35); animation: pulseCalled 1.5s infinite; }
+    .status-badge-live.s-served { color: #bbf7d0; background: rgba(34,197,94,0.3); }
+    .status-badge-live.s-skipped { color: #fef08a; background: rgba(234,179,8,0.3); }
+
+    @keyframes pulseNext {
+      0%  { box-shadow: 0 0 0 0 rgba(234,179,8, 0.4); }
+      70% { box-shadow: 0 0 0 10px rgba(234,179,8, 0); }
+      100%{ box-shadow: 0 0 0 0 rgba(234,179,8, 0); }
+    }
+    @keyframes pulseCalled {
+      0%  { box-shadow: 0 0 0 0 rgba(239,68,68, 0.5); }
+      70% { box-shadow: 0 0 0 14px rgba(239,68,68, 0); }
+      100%{ box-shadow: 0 0 0 0 rgba(239,68,68, 0); }
+    }
+
+    .queue-card-footer {
+      display: flex; justify-content: center; align-items: center; gap: 6px;
+      margin-top: 16px; font-size: 11px; font-weight: 500; opacity: 0.5;
+      position: relative; z-index: 1;
+    }
+
     .served-notice {
       background: #f0fdf4; border: 1px solid #86efac; border-radius: var(--radius);
       padding: 16px 20px; margin-bottom: 12px; font-size: 14px; font-weight: 600;
       color: #166534; display: flex; align-items: center; gap: 10px;
     }
     .served-notice svg { width: 18px; height: 18px; }
-
-    .token-display {
-      font-size: 64px; font-weight: 800; font-family: 'DM Serif Display', serif;
-      line-height: 1; margin: 16px 0; text-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    .status-badge-live {
-      display: inline-block; padding: 6px 16px; border-radius: 20px;
-      font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-      background: rgba(255,255,255,0.2); backdrop-filter: blur(4px);
-    }
-    .status-badge-live.waiting { color: #fef08a; background: rgba(202,138,4,0.3); }
-    .status-badge-live.called  { color: #bfdbfe; background: rgba(37,99,235,0.3); animation: pulse 2s infinite; }
-    .status-badge-live.served  { color: #bbf7d0; background: rgba(22,163,74,0.3); }
-    .status-badge-live.skipped { color: #fecaca; background: rgba(220,38,38,0.3); }
-    @keyframes pulse {
-      0%  { box-shadow: 0 0 0 0 rgba(37,99,235, 0.4); }
-      70% { box-shadow: 0 0 0 10px rgba(37,99,235, 0); }
-      100%{ box-shadow: 0 0 0 0 rgba(37,99,235, 0); }
-    }
-
-    .metrics-grid {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px;
-      transition: opacity 0.6s ease;
-    }
-    .metrics-grid.fade-out { opacity: 0; }
-    .metric-card {
-      background: white; border: 1px solid var(--gray-200);
-      border-radius: var(--radius); padding: 20px; text-align: center;
-    }
-    .metric-value { font-size: 28px; font-weight: 800; color: var(--gray-900); margin-bottom: 4px; }
-    .metric-label { font-size: 13px; font-weight: 600; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.05em; }
 
     .loading-pulse {
       display: inline-block; width: 8px; height: 8px; background: currentColor;
@@ -156,8 +206,8 @@
       display: flex; align-items: center; gap: 5px; margin-top: 2px;
     }
     .appt-card .appt-note svg { width: 13px; height: 13px; }
-    .appt-card.checked-in { border-left: 4px solid #1a56db; }
-    .appt-card.checked-in .appt-note { color: #1a56db; font-style: normal; font-weight: 600; }
+    .appt-card.has-token { border-left: 4px solid #1a56db; }
+    .appt-card.has-token .appt-note { color: #1a56db; font-style: normal; font-weight: 600; }
 
     .today-divider {
       display: flex; align-items: center; gap: 12px; margin: 28px 0 18px;
@@ -169,6 +219,40 @@
       animation: todayBlink 2s ease infinite;
     }
     @keyframes todayBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* ── Late warning ── */
+    .appt-card.is-late {
+      border-left: 4px solid #ef4444;
+      background: #fff5f5;
+    }
+    .late-warning {
+      display: flex; align-items: center; gap: 7px;
+      background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 8px; padding: 10px 14px;
+      font-size: 13px; font-weight: 600; color: #b91c1c;
+      margin-top: 4px;
+    }
+    .late-warning svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .late-warning .late-sub {
+      font-size: 11.5px; font-weight: 400; color: #ef4444;
+      display: block; margin-top: 2px;
+    }
+
+    /* ── Last updated bar ── */
+    .refresh-bar-patient {
+      display: flex; align-items: center; gap: 8px; justify-content: center;
+      font-size: 11px; font-weight: 600; color: var(--gray-400);
+      margin-bottom: 22px;
+    }
+    .refresh-dot-p {
+      width: 7px; height: 7px; border-radius: 50%; background: #22c55e;
+      animation: refreshBlink 2s ease infinite;
+    }
+    @keyframes refreshBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    @media (max-width: 600px) {
+      .queue-card-body { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -215,38 +299,81 @@
   <%
     const todayAppts  = appointments.filter(a => new Date(a.date).toISOString().split('T')[0] === today);
     const futureAppts = appointments.filter(a => new Date(a.date).toISOString().split('T')[0] > today);
+    // Filter out served/skipped for the live cards (but we still have them in todayEntries for detection)
+    const activeEntries = todayEntries ? todayEntries.filter(e => e.status !== 'served' && e.status !== 'skipped') : [];
+    const servedEntries = todayEntries ? todayEntries.filter(e => e.status === 'served') : [];
   %>
 
-  <!-- ═══════════ LIVE QUEUE — TODAY ═══════════ -->
-  <% if (todayEntries && todayEntries.length > 0) { %>
-    <% todayEntries.forEach(entry => { %>
-      <div class="queue-status-card" id="live-card-<%= entry._id %>">
-        <div style="font-size:14px; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; opacity:0.8;">Your Token Number</div>
-        <div class="token-display">#<span class="ui-token"><%= entry.tokenNumber %></span></div>
-        <div class="status-badge-live <%= entry.status %> ui-status"><%= entry.status %></div>
-        <div style="margin-top:20px; font-size:15px; font-weight:500;">
-          Consulting with <strong><%= entry.doctor.name %></strong>
-          <% if (entry.doctor.specialization) { %>
-            <span style="opacity:0.7; font-size:13px;">&middot; <%= entry.doctor.specialization %></span>
-          <% } %>
-        </div>
-        <div style="margin-top:24px; font-size:11px; font-weight:500; opacity:0.6; display:flex; align-items:center; justify-content:center; gap:6px;">
-          <span class="loading-pulse"></span> Live updating every 10s
-        </div>
-      </div>
+  <!-- ═══════════ REFRESH BAR ═══════════ -->
+  <% if (activeEntries.length > 0) { %>
+    <div class="refresh-bar-patient">
+      <span class="refresh-dot-p"></span>
+      Auto-refreshing every 15s &middot; <span id="last-refresh">Just now</span>
+    </div>
+  <% } %>
 
-      <div class="metrics-grid" id="metrics-<%= entry._id %>">
-        <div class="metric-card">
-          <div class="metric-value ui-position">--</div>
-          <div class="metric-label">Position in Line</div>
+  <!-- ═══════════ LIVE QUEUE — TODAY ═══════════ -->
+  <% if (activeEntries.length > 0) { %>
+    <% activeEntries.forEach(entry => {
+      const entryLate = entry.appointment && isLate(entry.appointment);
+    %>
+      <div class="queue-status-card<%= entryLate ? ' is-late' : '' %>" id="live-card-<%= entry._id %>">
+        <div class="queue-card-top">
+          <div>
+            <div class="queue-card-doctor">
+              <strong><%= entry.doctor.name %></strong>
+              <% if (entry.doctor.specialization) { %>
+                <span class="queue-card-spec">&middot; <%= entry.doctor.specialization %></span>
+              <% } %>
+            </div>
+            <div class="queue-card-time" style="margin-top:6px;">
+              <%- icon('clock') %>
+              Your Appointment: <strong><%= entry.appointment ? entry.appointment.timeSlot : 'N/A' %></strong>
+            </div>
+          </div>
+          <div class="ui-status-badge-wrap" style="text-align:right;">
+            <div class="status-badge-live s-waiting ui-status-badge">WAITING</div>
+          </div>
         </div>
-        <div class="metric-card">
-          <div class="metric-value ui-wait">--</div>
-          <div class="metric-label">Est. Wait (Mins)</div>
+
+        <div class="queue-late-banner" id="late-banner-<%= entry._id %>" style="<%= entryLate ? '' : 'display:none;' %>">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div>
+            <div class="late-title">⚠ Your appointment time has passed!</div>
+            <div class="late-msg">Please proceed to reception immediately or you may be skipped.</div>
+          </div>
         </div>
-        <div class="metric-card">
-          <div class="metric-value ui-called">--</div>
-          <div class="metric-label">Currently Called</div>
+
+        <div class="queue-card-body">
+          <div class="queue-card-token">
+            <div class="token-label">🎫 Your Token Number</div>
+            <div class="token-display">#<span class="ui-token"><%= entry.tokenNumber %></span></div>
+          </div>
+
+          <div class="queue-stat">
+            <div class="queue-stat-value ui-called-token">—</div>
+            <div class="queue-stat-label">📢 Now Calling</div>
+          </div>
+          <div class="queue-stat">
+            <div class="queue-stat-value ui-ahead">—</div>
+            <div class="queue-stat-label">👥 Ahead of You</div>
+          </div>
+          <div class="queue-stat">
+            <div class="queue-stat-value ui-wait">—</div>
+            <div class="queue-stat-label">⏱ Est. Wait (min)</div>
+          </div>
+          <div class="queue-stat">
+            <div class="queue-stat-value ui-served">—</div>
+            <div class="queue-stat-label">✅ Served Today</div>
+          </div>
+        </div>
+
+        <div style="text-align:center; position:relative; z-index:1;">
+          <div class="status-badge-live s-waiting ui-status-label">WAITING</div>
+        </div>
+
+        <div class="queue-card-footer">
+          <span class="loading-pulse"></span> Live updating every 15s
         </div>
       </div>
 
@@ -254,17 +381,28 @@
       <input type="hidden" class="entry-doctor"  value="<%= entry.doctor._id %>">
       <input type="hidden" class="entry-patient" value="<%= curruser._id %>">
       <input type="hidden" class="entry-id"      value="<%= entry._id %>">
+      <input type="hidden" class="entry-timeslot" value="<%= entry.appointment ? entry.appointment.timeSlot : '' %>">
     <% }) %>
   <% } %>
+
+  <!-- ═══════════ SERVED NOTICES ═══════════ -->
+  <% servedEntries.forEach(entry => { %>
+    <div class="served-notice" id="served-notice-<%= entry._id %>" style="position:relative;">
+      <%- icon('check') %> You have been served by <%= entry.doctor.name %>. Thank you for your visit!
+      <button onclick="dismissServedNotice(this)" style="position:absolute; top:10px; right:12px; background:none; border:none; cursor:pointer; color:#6b7280; font-size:18px; line-height:1; padding:2px 6px; border-radius:4px; transition:color 0.15s;" onmouseover="this.style.color='#166534'" onmouseout="this.style.color='#6b7280'">✕</button>
+    </div>
+  <% }) %>
 
   <!-- ═══════════ TODAY'S APPOINTMENTS ═══════════ -->
   <% if (todayAppts.length > 0) { %>
     <div class="today-divider"><span class="today-dot"></span> Today's Appointments</div>
     <div class="appt-cards">
       <% todayAppts.forEach(appt => {
-        const hasEntry = todayEntries.some(e => e.appointment && e.appointment.toString() === appt._id.toString());
-      %>
-        <div class="appt-card<%= hasEntry ? ' checked-in' : '' %>">
+        const hasEntry = todayEntries.some(e => e.appointment && e.appointment._id.toString() === appt._id.toString());
+        const matchEntry = todayEntries.find(e => e.appointment && e.appointment._id.toString() === appt._id.toString());
+        const late = !hasEntry && appt.status !== 'Completed' && isLate(appt);
+      %> 
+        <div class="appt-card<%= hasEntry ? ' has-token' : late ? ' is-late' : '' %>">
           <div class="appt-card-header">
             <div>
               <div class="appt-doctor"><%= appt.doctor ? appt.doctor.name : 'N/A' %></div>
@@ -276,8 +414,28 @@
             <div class="appt-info-item"><%- icon('calendar') %><span><%= new Date(appt.date).toDateString() %></span></div>
             <div class="appt-info-item"><%- icon('clock') %><span><%= appt.timeSlot %></span></div>
           </div>
-          <% if (hasEntry) { %>
-            <div class="appt-note"><%- icon('check') %> Checked in — see live tracker above</div>
+          <% if (late) { %>
+            <div class="late-warning">
+              <%- icon('warning') %>
+              <div>
+                Your appointment time has passed and you haven't checked in.
+                <span class="late-sub">Please go to reception immediately or contact the hospital.</span>
+              </div>
+            </div>
+          <% } %>
+          <% if (hasEntry && matchEntry) { %>
+            <% if (matchEntry.status === 'served') { %>
+              <div style="margin-top:2px; display:flex; justify-content:space-between; align-items:center;">
+                <div class="appt-note" style="color:var(--green); font-style:normal; font-weight:600;"><%- icon('check') %> Consultation Completed!</div>
+                <form style="display:inline;" action="/appointments/<%= appt._id %>/delete" method="POST" onsubmit="return confirm('Permanently delete this completed appointment?');">
+                  <button type="submit" class="btn btn-ghost btn-sm" style="color:var(--red); font-size:11px; padding:4px 8px; border:1px solid #fee2e2; border-radius:6px;">Delete</button>
+                </form>
+              </div>
+            <% } else { %>
+              <div class="appt-note">🎫 Token #<%= matchEntry.tokenNumber %> assigned — see live tracker above</div>
+            <% } %>
+          <% } else if (appt.status === 'Confirmed') { %>
+            <div class="appt-note"><%- icon('check') %> Confirmed — token pre-assigned</div>
           <% } else if (appt.status === 'Completed') { %>
             <div style="margin-top:2px; display:flex; justify-content:space-between; align-items:center;">
               <div class="appt-note" style="color:var(--green); font-style:normal; font-weight:600;"><%- icon('check') %> Consultation Completed!</div>
@@ -286,7 +444,7 @@
               </form>
             </div>
           <% } else { %>
-            <div class="appt-note"><%- icon('clock') %> Arrive at the reception to get your token</div>
+            <div class="appt-note"><%- icon('clock') %> Awaiting confirmation from reception</div>
           <% } %>
         </div>
       <% }) %>
@@ -304,7 +462,7 @@
         <div class="appt-card">
           <div class="appt-card-header">
             <div>
-              <div class="appt-doctor">Dr. <%= appt.doctor ? appt.doctor.name : 'N/A' %></div>
+              <div class="appt-doctor"><%= appt.doctor ? appt.doctor.name : 'N/A' %></div>
               <div class="appt-specialization"><%= appt.doctor ? appt.doctor.specialization : '' %></div>
             </div>
             <span class="appt-status-badge <%= (appt.status || 'Pending').toLowerCase() %>"><%= appt.status || 'Pending' %></span>
@@ -331,12 +489,28 @@
 
   <!-- ═══════════ LIVE POLLING SCRIPT ═══════════ -->
   <script>
+    // ── Dismiss served notice (cross button) ──
+    function dismissServedNotice(btn) {
+      var notice = btn.closest('.served-notice');
+      if (notice) {
+        var id = notice.id.replace('served-notice-', '');
+        fetch('/api/queue/' + id + '/dismiss', { method: 'POST' }).catch(function(){});
+
+        notice.style.transition = 'opacity 0.3s, transform 0.3s';
+        notice.style.opacity = '0';
+        notice.style.transform = 'translateY(-8px)';
+        setTimeout(function() { notice.remove(); }, 320);
+      }
+    }
+
     const renderedNotifIds = new Set();
     const servedCards      = new Set();
+    let refreshCounter = 0;
 
     const iconWarning  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
     const iconCalendar = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
     const iconCheck    = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+    const iconQueue    = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`;
 
     function dismissNotif(id, el) {
       el.style.transition = 'opacity 0.3s, transform 0.3s';
@@ -375,7 +549,7 @@
           <div class="notif-msg">${n.message}</div>
           <div class="notif-meta">
             <span>Was: <strong>${origDate} · ${n.originalTimeSlot || '—'}</strong></span>
-            <span>→ Now: <strong>${propDate} · ${propSlot} · Dr. ${propDocName}</strong></span>
+            <span>→ Now: <strong>${propDate} · ${propSlot} · ${propDocName}</strong></span>
           </div>
           <div class="notif-actions">
             <form action="/appointments/${n.appointment}/confirm-reschedule" method="POST" style="display:inline;">
@@ -390,6 +564,21 @@
       area.prepend(div);
     }
 
+    function renderTokenUpdateBanner(n) {
+      const area = document.getElementById('notification-area');
+      const div  = document.createElement('div');
+      div.className = 'notif-banner token_update'; div.id = 'notif-' + n._id;
+      div.innerHTML = `
+        <div class="notif-icon">${iconQueue}</div>
+        <div class="notif-body">
+          <div class="notif-title">🎫 Token Updated</div>
+          <div class="notif-msg">${n.message}</div>
+        </div>
+        <button class="notif-dismiss">✕</button>`;
+      div.querySelector('.notif-dismiss').addEventListener('click', () => dismissNotif(n._id, div));
+      area.prepend(div);
+    }
+
     function fetchNotifications() {
       fetch('/api/notifications')
         .then(r => r.json())
@@ -400,53 +589,91 @@
             renderedNotifIds.add(n._id);
             if (n.type === 'skipped')             renderSkipBanner(n);
             if (n.type === 'reschedule_proposed') renderRescheduleBanner(n);
+            if (n.type === 'token_updated')       renderTokenUpdateBanner(n);
           });
         })
         .catch(() => {});
+    }
+
+    function getStatusBadge(status, position) {
+      if (status === 'served')  return { cls: 's-served',  text: 'SERVED — Visit Complete' };
+      if (status === 'skipped') return { cls: 's-skipped', text: 'SKIPPED — Contact Reception' };
+      if (status === 'called')  return { cls: 's-called',  text: 'BEING CALLED — Please proceed to the doctor' };
+      if (status === 'waiting' && position === 1) return { cls: 's-next', text: "YOU'RE NEXT!" };
+      return { cls: 's-waiting', text: 'WAITING' };
     }
 
     function fetchAllEntries() {
       document.querySelectorAll('.entry-id').forEach(el => {
         const id       = el.value;
         const card     = document.getElementById('live-card-' + id);
-        const metrics  = document.getElementById('metrics-'   + id);
-        if (!card || !metrics) return;
+        if (!card) return;
 
         let date, doctorId, patientId;
-        el.parentElement.querySelectorAll('.entry-date, .entry-doctor, .entry-patient').forEach(s => {
-          if (s.classList.contains('entry-date'))    date      = s.value;
-          if (s.classList.contains('entry-doctor'))  doctorId  = s.value;
-          if (s.classList.contains('entry-patient')) patientId = s.value;
-        });
+        // Traverse siblings to find hidden inputs
+        let sibling = el;
+        while (sibling) {
+          if (sibling.classList && sibling.classList.contains('entry-date'))    date      = sibling.value;
+          if (sibling.classList && sibling.classList.contains('entry-doctor'))  doctorId  = sibling.value;
+          if (sibling.classList && sibling.classList.contains('entry-patient')) patientId = sibling.value;
+          sibling = sibling.previousElementSibling || null;
+          if (!sibling) {
+            // Also check next siblings
+            sibling = el;
+            while(sibling) {
+              if (sibling.classList && sibling.classList.contains('entry-date'))    date      = sibling.value;
+              if (sibling.classList && sibling.classList.contains('entry-doctor'))  doctorId  = sibling.value;
+              if (sibling.classList && sibling.classList.contains('entry-patient')) patientId = sibling.value;
+              sibling = sibling.nextElementSibling;
+            }
+            break;
+          }
+        }
+
+        if (!date || !doctorId || !patientId) return;
 
         fetch(`/api/queue/status?date=${date}&doctorId=${doctorId}&patientId=${patientId}`)
           .then(r => r.json())
           .then(data => {
             if (data.error) return;
 
-            card.querySelector('.ui-token').textContent = data.tokenNumber;
-            const statusBadge = card.querySelector('.ui-status');
-            statusBadge.className  = 'status-badge-live ' + data.status + ' ui-status';
-            statusBadge.textContent = data.status;
+            // Update token number
+            const tokenEl = card.querySelector('.ui-token');
+            if (tokenEl) tokenEl.textContent = data.tokenNumber;
 
-            const posEl    = metrics.querySelector('.ui-position');
-            const waitEl   = metrics.querySelector('.ui-wait');
-            const calledEl = metrics.querySelector('.ui-called');
+            // Update stats
+            const aheadEl  = card.querySelector('.ui-ahead');
+            const waitEl   = card.querySelector('.ui-wait');
+            const calledEl = card.querySelector('.ui-called-token');
+            const servedEl = card.querySelector('.ui-served');
 
             if (data.status === 'served') {
               if (!servedCards.has(id)) {
                 servedCards.add(id);
-                posEl.textContent  = '✓';
-                waitEl.textContent = '0';
+                if (aheadEl)  aheadEl.textContent  = '✓';
+                if (waitEl)   waitEl.textContent   = '0';
+                if (servedEl) servedEl.textContent = data.totalServed;
                 setTimeout(() => {
                   card.classList.add('fade-out');
-                  metrics.classList.add('fade-out');
                   setTimeout(() => {
                     const notice = document.createElement('div');
                     notice.className = 'served-notice';
-                    notice.innerHTML = `${iconCheck} You have been served. Thank you for your visit!`;
+                    notice.id = 'served-notice-' + id;
+                    notice.style.position = 'relative';
+                    notice.innerHTML = `${iconCheck} You have been served. Thank you for your visit! 
+                      <button onclick="dismissServedNotice(this)" style="position:absolute; top:10px; right:12px; background:none; border:none; cursor:pointer; color:#6b7280; font-size:18px; line-height:1; padding:2px 6px; border-radius:4px; transition:color 0.15s;" onmouseover="this.style.color='#166534'" onmouseout="this.style.color='#6b7280'">✕</button>`;
                     card.parentNode.insertBefore(notice, card);
-                    card.remove(); metrics.remove();
+                    card.remove();
+                    // Remove associated hidden inputs
+                    const hiddens = document.querySelectorAll(`input.entry-id[value="${id}"]`);
+                    hiddens.forEach(h => {
+                      let sib = h;
+                      while(sib && sib.tagName === 'INPUT' && sib.type === 'hidden') {
+                        const next = sib.nextElementSibling;
+                        sib.remove();
+                        sib = next;
+                      }
+                    });
                     setTimeout(() => {
                       notice.style.transition = 'opacity 0.5s';
                       notice.style.opacity = '0';
@@ -456,29 +683,93 @@
                 }, 1200);
               }
             } else if (data.status === 'skipped') {
-              posEl.textContent  = '-';
-              waitEl.textContent = '-';
+              if (aheadEl)  aheadEl.textContent  = '—';
+              if (waitEl)   waitEl.textContent   = '—';
             } else if (data.status === 'called') {
-              posEl.textContent  = "It's your turn!";
-              posEl.style.fontSize = '18px';
-              waitEl.textContent = '0';
+              if (aheadEl)  aheadEl.textContent  = '0';
+              if (waitEl)   waitEl.textContent   = '0';
             } else {
-              posEl.textContent  = data.position;
-              posEl.style.fontSize = '28px';
-              waitEl.textContent = data.estimatedWaitMinutes;
+              if (aheadEl)  aheadEl.textContent  = data.aheadOfYou;
+              if (waitEl)   waitEl.textContent   = '~' + data.estimatedWaitMinutes;
             }
-            calledEl.textContent = data.calledToken ? '#' + data.calledToken : 'None';
+            if (calledEl) {
+              if (data.calledToken && data.calledToken === data.tokenNumber) {
+                calledEl.textContent = "🎉 It's Your Turn!";
+                calledEl.style.fontSize = '16px';
+              } else {
+                calledEl.textContent = data.calledToken ? '#' + data.calledToken : 'None';
+                calledEl.style.fontSize = '';
+              }
+            }
+            if (servedEl && data.status !== 'served') servedEl.textContent = data.totalServed;
+
+            // Update status badges
+            const badge = getStatusBadge(data.status, data.position);
+            card.querySelectorAll('.ui-status-badge, .ui-status-label').forEach(b => {
+              b.className = b.className.replace(/s-\w+/g, '') + ' ' + badge.cls;
+              b.textContent = badge.text;
+            });
           })
           .catch(() => {});
       });
     }
 
     fetchNotifications();
-    setInterval(fetchNotifications, 10000);
+    setInterval(fetchNotifications, 15000);
 
-    <% if (todayEntries && todayEntries.length > 0) { %>
+    <% if (activeEntries.length > 0) { %>
       fetchAllEntries();
-      setInterval(fetchAllEntries, 10000);
+      setInterval(fetchAllEntries, 15000);
+
+      // Count up the "ago" timer
+      setInterval(() => {
+        refreshCounter++;
+        const el = document.getElementById('last-refresh');
+        if (el) el.textContent = refreshCounter + 's ago';
+      }, 1000);
+
+      // Reset counter after each fetch
+      const origFetch = fetchAllEntries;
+      // Wrapped in the interval already — counter resets on each poll cycle
+
+      // ── Client-side late detection ──
+      function checkLateEntries() {
+        document.querySelectorAll('.entry-timeslot').forEach(function(el) {
+          var timeSlot = el.value;
+          if (!timeSlot) return;
+          var match = timeSlot.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if (!match) return;
+          var hours = parseInt(match[1], 10);
+          var minutes = parseInt(match[2], 10);
+          var ampm = match[3].toUpperCase();
+          if (ampm === 'PM' && hours < 12) hours += 12;
+          if (ampm === 'AM' && hours === 12) hours = 0;
+
+          var now = new Date();
+          var apptTime = new Date();
+          apptTime.setHours(hours, minutes, 0, 0);
+
+          if (now > apptTime) {
+            // Find the associated card
+            var idEl = el.previousElementSibling;
+            while (idEl && !idEl.classList.contains('entry-id')) {
+              idEl = idEl.previousElementSibling;
+            }
+            if (!idEl) return;
+            var entryId = idEl.value;
+            var card = document.getElementById('live-card-' + entryId);
+            var banner = document.getElementById('late-banner-' + entryId);
+            if (card && !card.classList.contains('is-late')) {
+              card.classList.add('is-late');
+            }
+            if (banner) {
+              banner.style.display = '';
+            }
+          }
+        });
+      }
+      checkLateEntries();
+      setInterval(checkLateEntries, 30000);
     <% } %>
   </script>
 

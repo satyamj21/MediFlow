@@ -365,6 +365,7 @@
           <table class="sched-table">
             <thead>
               <tr>
+                <th>Token</th>
                 <th>Patient</th>
                 <th>Time Slot</th>
                 <th>Status</th>
@@ -374,8 +375,16 @@
             <tbody>
               <% docAppts.forEach(appt => {
                 const isQueued = queuedAppointmentIds && queuedAppointmentIds.has(appt._id.toString());
+                const matchedEntry = isQueued ? docQueue.find(q => q.appointment && q.appointment._id.toString() === appt._id.toString()) : null;
               %>
               <tr>
+                <td style="font-weight:800; color:var(--gray-900); font-size:15px;">
+                  <% if (matchedEntry) { %>
+                    #<%= matchedEntry.tokenNumber %>
+                  <% } else { %>
+                    <span style="color:var(--gray-300);">—</span>
+                  <% } %>
+                </td>
                 <td class="sched-name"><%= appt.user ? (appt.user.fullName || appt.user.username) : 'Unknown' %></td>
                 <td class="sched-time"><%= appt.timeSlot %></td>
                 <td>
@@ -384,8 +393,14 @@
                   </span>
                 </td>
                 <td style="text-align:right;">
-                  <% if (isQueued) { %>
-                    <span class="checked-label"><%- icon('check') %> Checked In</span>
+                  <% if (isQueued && matchedEntry) { %>
+                    <% if (matchedEntry.checkedInPhysically) { %>
+                      <span class="checked-label"><%- icon('check') %> Arrived</span>
+                    <% } else { %>
+                      <form action="/receptionist/queue/checkin/<%= appt._id %>" method="POST" style="display:inline;">
+                        <button type="submit" class="checkin-btn" style="background:linear-gradient(135deg, #ea580c, #c2410c);"><%- icon('check') %> Mark Arrived</button>
+                      </form>
+                    <% } %>
                   <% } else { %>
                     <form action="/receptionist/queue/checkin/<%= appt._id %>" method="POST" style="display:inline;">
                       <button type="submit" class="checkin-btn"><%- icon('plus') %> Check In</button>
@@ -598,18 +613,35 @@
           // Update scheduled appointments check-in status
           const schedTable = panel.querySelector('.sched-table tbody');
           if (schedTable && doc.scheduledAppts) {
+            // Rebuild schedule table body to reflect updated tokens and arrival status
+            let tbodyHtml = '';
             doc.scheduledAppts.forEach(appt => {
-              const rows = schedTable.querySelectorAll('tr');
-              rows.forEach(row => {
-                const actionCell = row.querySelector('td:last-child');
-                if (!actionCell) return;
-                const checkinForm = actionCell.querySelector('form[action*="checkin/' + appt._id + '"]');
-                if (checkinForm && appt.isQueued) {
-                  checkinForm.innerHTML = `<span class="checked-label"><%- icon('check') %> Checked In</span>`;
-                  checkinForm.outerHTML = checkinForm.innerHTML;
+              const tokenCol = appt.tokenNumber
+                ? `<td style="font-weight:800; color:var(--gray-900); font-size:15px;">#${appt.tokenNumber}</td>`
+                : `<td style="font-weight:800; color:var(--gray-900); font-size:15px;"><span style="color:var(--gray-300);">—</span></td>`;
+
+              const statusBadge = `<span class="badge badge-${(appt.status || 'Pending').toLowerCase() === 'confirmed' ? 'confirmed' : 'pending'}">${appt.status || 'Pending'}</span>`;
+
+              let actionHtml = '';
+              if (appt.isQueued) {
+                if (appt.checkedInPhysically) {
+                  actionHtml = `<span class="checked-label"><%- icon('check') %> Arrived</span>`;
+                } else {
+                  actionHtml = `<form action="/receptionist/queue/checkin/${appt._id}" method="POST" style="display:inline;"><button type="submit" class="checkin-btn" style="background:linear-gradient(135deg, #ea580c, #c2410c);"><%- icon('check') %> Mark Arrived</button></form>`;
                 }
-              });
+              } else {
+                actionHtml = `<form action="/receptionist/queue/checkin/${appt._id}" method="POST" style="display:inline;"><button type="submit" class="checkin-btn"><%- icon('plus') %> Check In</button></form>`;
+              }
+
+              tbodyHtml += `<tr>
+                ${tokenCol}
+                <td class="sched-name">${appt.patientName}</td>
+                <td class="sched-time">${appt.timeSlot}</td>
+                <td>${statusBadge}</td>
+                <td style="text-align:right;">${actionHtml}</td>
+              </tr>`;
             });
+            schedTable.innerHTML = tbodyHtml;
           }
         });
 

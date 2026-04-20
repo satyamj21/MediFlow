@@ -9,7 +9,7 @@ const notificationSchema = new Schema({
   },
   type: {
     type: String,
-    enum: ["skipped", "reschedule_proposed"],
+    enum: ["skipped", "reschedule_proposed", "token_updated"],
     required: true,
   },
   appointment: {

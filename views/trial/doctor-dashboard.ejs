@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <% if (selectedDate === today) { %>
+  <meta http-equiv="refresh" content="30">
+  <% } %>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <title>MediFlow – Doctor Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/mediflow.css">
+  <style>
+    /* Doctor sidebar — distinctive blue */
+    .sidebar { background: linear-gradient(175deg, #1a6b9a 0%, #2589c7 100%); }
+    .sidebar nav a.active { background: rgba(255,255,255,0.22); }
+    .stat-icon.blue { background: #dbeafe; color: #1d4ed8; }
+
+    /* Token badge */
+    .token-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #e0f2fe; color: #0369a1;
+      font-size: 12px; font-weight: 700;
+      padding: 3px 9px; border-radius: 20px;
+      letter-spacing: 0.03em;
+    }
+
+    /* Patient name */
+    .patient-name { font-weight: 600; color: var(--gray-900); font-size: 13.5px; }
+
+    /* Time slot cell */
+    .time-slot {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 13px; color: var(--gray-700); font-weight: 500;
+    }
+    .time-slot svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+    /* Badge variants */
+    .badge-orange { background: #fff7ed; color: #c2410c; }
+    .badge-gray   { background: #f3f4f6; color: #6b7280; }
+    .badge-blood  { background: #fef2f2; color: #b91c1c; font-weight: 700; }
+    .badge-info   { background: #e0f2fe; color: #0369a1; font-size: 11px; font-weight: 600; }
+
+    /* Pulse animation for "Called" badge */
+    .badge-pulse { animation: pulse-badge 1.4s ease-in-out infinite; }
+    @keyframes pulse-badge {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.55; }
+    }
+
+    /* Data table */
+    .data-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    .data-table thead th {
+      padding: 10px 14px; text-align: left;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; color: var(--gray-500);
+      border-bottom: 1.5px solid var(--gray-100);
+      background: var(--gray-50);
+    }
+    .data-table tbody tr { border-bottom: 1px solid var(--gray-100); }
+    .data-table tbody tr:last-child { border-bottom: none; }
+    .data-table tbody tr:hover { background: var(--gray-50); }
+    .data-table tbody td { padding: 12px 14px; color: var(--gray-700); vertical-align: middle; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 10px; padding: 60px 24px; color: var(--gray-400); text-align: center;
+    }
+    .empty-state svg { width: 40px; height: 40px; opacity: 0.35; }
+    .empty-state p { font-size: 15px; font-weight: 500; color: var(--gray-500); margin: 0; }
+    .empty-state small { font-size: 12px; color: var(--gray-400); }
+
+    /* Stats row */
+    .stats-row {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 16px; margin-bottom: 22px;
+    }
+    .stat-icon.orange { background: #fff7ed; color: #c2410c; }
+    .stat-icon.green  { background: #dcfce7; color: #16a34a; }
+
+    /* ── Calendar Section ── */
+    .calendar-card {
+      background: white; border-radius: var(--radius);
+      box-shadow: 0 1px 4px rgba(15,52,96,0.07);
+      border: 1px solid var(--gray-100);
+      margin-bottom: 22px;
+    }
+    .calendar-header {
+      padding: 16px 20px 12px;
+      border-bottom: 1px solid var(--gray-100);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .calendar-header h3 {
+      font-size: 14px; font-weight: 700; color: var(--gray-900);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .calendar-header h3 svg { width: 16px; height: 16px; }
+    .calendar-body { padding: 16px 20px; }
+
+    /* Date picker row */
+    .date-picker-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 14px; flex-wrap: wrap;
+    }
+    .date-picker-row input[type="date"] {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px; font-weight: 600;
+      padding: 8px 14px; border-radius: 8px;
+      border: 1.5px solid var(--gray-200);
+      color: var(--gray-800); background: white;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .date-picker-row input[type="date"]:focus {
+      outline: none; border-color: #2589c7;
+      box-shadow: 0 0 0 3px rgba(37,137,199,0.12);
+    }
+    .date-nav-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 34px; height: 34px; border-radius: 8px;
+      border: 1.5px solid var(--gray-200); background: white;
+      cursor: pointer; color: var(--gray-600); transition: all 0.15s;
+      font-family: 'DM Sans', sans-serif; font-size: 16px; font-weight: 600;
+    }
+    .date-nav-btn:hover { border-color: #2589c7; color: #1a6b9a; background: #e0f2fe; }
+    .today-btn {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px; font-weight: 700;
+      padding: 7px 14px; border-radius: 8px;
+      border: 1.5px solid #2589c7; background: #e0f2fe; color: #1a6b9a;
+      cursor: pointer; transition: all 0.15s; text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .today-btn:hover { background: #2589c7; color: white; }
+    .today-btn.active-today { background: #2589c7; color: white; }
+
+    /* Upcoming list */
+    .upcoming-list { list-style: none; padding: 0; margin: 0; }
+    .upcoming-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 0; border-bottom: 1px solid var(--gray-50);
+    }
+    .upcoming-item:last-child { border-bottom: none; }
+    .upcoming-date-badge {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center;
+      min-width: 44px; height: 44px; border-radius: 10px;
+      background: #f0f7ff; color: #1a6b9a;
+      font-weight: 700; line-height: 1;
+    }
+    .upcoming-date-badge .day { font-size: 16px; }
+    .upcoming-date-badge .month { font-size: 9px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; }
+    .upcoming-info { flex: 1; min-width: 0; }
+    .upcoming-info .up-name {
+      font-size: 13px; font-weight: 600; color: var(--gray-800);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .upcoming-info .up-meta {
+      font-size: 11.5px; color: var(--gray-500); display: flex;
+      align-items: center; gap: 4px; margin-top: 1px;
+    }
+    .upcoming-info .up-meta svg { width: 11px; height: 11px; }
+
+    .date-indicator {
+      font-size: 12px; font-weight: 600; color: var(--gray-500);
+      padding: 2px 0;
+    }
+    .date-indicator.is-today { color: #2589c7; }
+
+    /* Content layout */
+    .content-grid {
+      display: grid; grid-template-columns: 1fr 320px; gap: 22px;
+      align-items: start;
+    }
+    @media (max-width: 960px) {
+      .content-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo-wrap"><%- icon('hospital') %></div>
+    <span class="brand-name">MediFlow</span>
+  </div>
+
+  <div class="sidebar-section-label">Doctor</div>
+  <nav>
+    <a href="/doctor" class="active">
+      <span class="nav-icon"><%- icon('stethoscope') %></span> My Patients
+    </a>
+  </nav>
+
+  <div class="sidebar-spacer"></div>
+  <div class="sidebar-divider"></div>
+
+  <% if (typeof curruser !== 'undefined' && curruser) { %>
+  <div class="sidebar-user">
+    <div class="avatar"><%= doctorName[0].toUpperCase() %></div>
+    <div>
+      <div class="user-name"><%= doctorName %></div>
+      <div class="user-role">Doctor<% if (specialization) { %> · <%= specialization %><% } %></div>
+    </div>
+  </div>
+  <% } %>
+  <form action="/logout" method="GET">
+    <button class="logout-btn"><%- icon('logout') %> Logout</button>
+  </form>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+  <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+    <div class="flash flash-success"><%- icon('success') %> <%= success %></div>
+  <% } %>
+  <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+    <div class="flash flash-error"><%- icon('warning') %> <%= error %></div>
+  <% } %>
+
+  <header class="page-header">
+    <div>
+      <h1><%= selectedDate === today ? "Today's Patients" : "Patient Schedule" %></h1>
+      <p>
+        <%= new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' }) %>
+        &nbsp;·&nbsp;
+        <span class="badge badge-info">Read-only view</span>
+        <% if (selectedDate !== today) { %>
+          &nbsp;
+          <a href="/doctor" style="font-size:12px; font-weight:600; color:#2589c7; text-decoration:none;">← Back to Today</a>
+        <% } %>
+      </p>
+    </div>
+  </header>
+
+  <!-- Stats -->
+  <%
+    let waitingCount = 0;
+    let completedCount = 0;
+    todayPatients.forEach(function(appt) {
+      const qEntry = queueMap[appt._id.toString()];
+      if (qEntry && qEntry.status === 'waiting') waitingCount++;
+      if (appt.status === 'Completed') completedCount++;
+    });
+  %>
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon blue"><%- icon('patients') %></div>
+      <div>
+        <div class="stat-value"><%= todayPatients.length %></div>
+        <div class="stat-label">Total Appointments</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon orange"><%- icon('clock') %></div>
+      <div>
+        <div class="stat-value"><%= waitingCount %></div>
+        <div class="stat-label">Waiting / In Queue</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green"><%- icon('check') %></div>
+      <div>
+        <div class="stat-value"><%= completedCount %></div>
+        <div class="stat-label">Completed</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content Grid: Table + Calendar -->
+  <div class="content-grid">
+
+    <!-- LEFT: Patient Table -->
+    <div class="card">
+      <div class="card-header-row">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h2>
+            <%- icon('patients') %>
+            <%= selectedDate === today ? "Today's Patient List" : "Patient List" %>
+          </h2>
+        </div>
+        <span class="badge badge-info">
+          <%= todayPatients.length %> patient<%= todayPatients.length !== 1 ? 's' : '' %>
+        </span>
+      </div>
+
+      <% if (todayPatients.length > 0) { %>
+      <div style="overflow-x: auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Token</th>
+              <th>Patient Name</th>
+              <th>Age</th>
+              <th>Gender</th>
+              <th>Blood Group</th>
+              <th>Time Slot</th>
+              <th>Appointment</th>
+              <th>Queue Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% todayPatients.forEach(function(appt, i) {
+                 const qEntry = queueMap[appt._id.toString()];
+            %>
+            <tr>
+              <td style="color:var(--gray-400); font-size:11.5px;"><%= i + 1 %></td>
+              <td>
+                <% if (qEntry) { %>
+                  <span class="token-badge">#<%= qEntry.tokenNumber %></span>
+                <% } else { %>
+                  <span style="color: var(--gray-400);">—</span>
+                <% } %>
+              </td>
+              <td>
+                <span class="patient-name">
+                  <%= appt.user ? (appt.user.fullName || appt.user.username) : "Walk-in" %>
+                </span>
+              </td>
+              <td><%= (appt.user && appt.user.age) ? appt.user.age : "—" %></td>
+              <td><%= (appt.user && appt.user.gender) ? appt.user.gender : "—" %></td>
+              <td>
+                <% if (appt.user && appt.user.bloodGroup && appt.user.bloodGroup !== "Unknown" && appt.user.bloodGroup !== "") { %>
+                  <span class="badge badge-blood"><%= appt.user.bloodGroup %></span>
+                <% } else { %>
+                  <span style="color: var(--gray-400);">—</span>
+                <% } %>
+              </td>
+              <td>
+                <span class="time-slot">
+                  <%- icon('clock') %> <%= appt.timeSlot %>
+                </span>
+              </td>
+              <td>
+                <% if (appt.status === 'Confirmed') { %>
+                  <span class="badge badge-confirmed">Confirmed</span>
+                <% } else if (appt.status === 'Completed') { %>
+                  <span class="badge badge-confirmed" style="background:#dcfce7; color:#16a34a;">Completed</span>
+                <% } else { %>
+                  <span class="badge badge-pending">Pending</span>
+                <% } %>
+              </td>
+              <td>
+                <% if (!qEntry) { %>
+                  <span class="badge badge-gray">Not Checked In</span>
+                <% } else if (qEntry.status === 'waiting') { %>
+                  <span class="badge badge-confirmed">Waiting</span>
+                <% } else if (qEntry.status === 'called') { %>
+                  <span class="badge badge-orange badge-pulse">Called</span>
+                <% } else if (qEntry.status === 'served') { %>
+                  <span class="badge badge-confirmed" style="background:#dcfce7; color:#16a34a;">Served</span>
+                <% } else if (qEntry.status === 'skipped') { %>
+                  <span class="badge badge-cancelled">Skipped</span>
+                <% } %>
+              </td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+      <% } else { %>
+        <div class="empty-state">
+          <%- icon('stethoscope') %>
+          <p>No appointments scheduled for this date.</p>
+          <% if (!linkedDoctor) { %>
+            <small>Your account is not linked to a doctor profile. Please ensure your Full Name matches your name in the Doctor directory, or contact the administrator.</small>
+          <% } %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- RIGHT: Calendar & Upcoming -->
+    <div>
+      <!-- Date Picker -->
+      <div class="calendar-card">
+        <div class="calendar-header">
+          <h3><%- icon('calendar') %> Schedule</h3>
+        </div>
+        <div class="calendar-body">
+          <div class="date-picker-row">
+            <button type="button" class="date-nav-btn" id="prevDay" title="Previous day">‹</button>
+            <input type="date" id="datePicker" value="<%= selectedDate %>" />
+            <button type="button" class="date-nav-btn" id="nextDay" title="Next day">›</button>
+            <button type="button" class="today-btn <%= selectedDate === today ? 'active-today' : '' %>" id="todayBtn">Today</button>
+          </div>
+          <div class="date-indicator <%= selectedDate === today ? 'is-today' : '' %>">
+            <% if (selectedDate === today) { %>
+              Showing today's schedule
+            <% } else if (selectedDate < today) { %>
+              Viewing past date
+            <% } else { %>
+              Viewing future date
+            <% } %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upcoming Appointments -->
+      <div class="calendar-card">
+        <div class="calendar-header">
+          <h3><%- icon('appointments') %> Upcoming</h3>
+          <span class="badge badge-info"><%= upcomingAppointments.length %></span>
+        </div>
+        <div class="calendar-body">
+          <% if (upcomingAppointments.length > 0) { %>
+            <%
+              // Group by date
+              const grouped = {};
+              upcomingAppointments.forEach(function(a) {
+                const d = a.date.toISOString().split('T')[0];
+                if (!grouped[d]) grouped[d] = [];
+                grouped[d].push(a);
+              });
+              const dateKeys = Object.keys(grouped).sort();
+              // Show max 7 dates
+              const shownDates = dateKeys.slice(0, 7);
+            %>
+            <ul class="upcoming-list">
+              <% shownDates.forEach(function(dateStr) {
+                const appts = grouped[dateStr];
+                const dateObj = new Date(dateStr + 'T12:00:00');
+                const dayNum = dateObj.getDate();
+                const monthStr = dateObj.toLocaleDateString('en-IN', { month: 'short' });
+                const isToday = dateStr === today;
+              %>
+                <li class="upcoming-item" style="cursor:pointer;" onclick="window.location.href='/doctor?date=<%= dateStr %>'">
+                  <div class="upcoming-date-badge" style="<%= isToday ? 'background:#dbeafe; color:#1d4ed8;' : '' %>">
+                    <span class="day"><%= dayNum %></span>
+                    <span class="month"><%= monthStr %></span>
+                  </div>
+                  <div class="upcoming-info">
+                    <div class="up-name">
+                      <%= appts.length %> appointment<%= appts.length !== 1 ? 's' : '' %>
+                      <% if (isToday) { %><span class="badge badge-info" style="margin-left:4px;">Today</span><% } %>
+                    </div>
+                    <div class="up-meta">
+                      <%- icon('clock') %>
+                      <%= appts[0].timeSlot %><% if (appts.length > 1) { %> – <%= appts[appts.length - 1].timeSlot %><% } %>
+                    </div>
+                  </div>
+                  <% if (dateStr === selectedDate) { %>
+                    <span style="width:8px; height:8px; border-radius:50%; background:#2589c7; flex-shrink:0;"></span>
+                  <% } %>
+                </li>
+              <% }) %>
+            </ul>
+            <% if (dateKeys.length > 7) { %>
+              <div style="text-align:center; padding:8px 0 4px; font-size:11px; color:var(--gray-400);">
+                + <%= dateKeys.length - 7 %> more date<%= dateKeys.length - 7 !== 1 ? 's' : '' %> with appointments
+              </div>
+            <% } %>
+          <% } else { %>
+            <div style="text-align:center; padding:20px 0; color:var(--gray-400); font-size:13px;">
+              <% if (linkedDoctor) { %>
+                No upcoming appointments in the next 30 days.
+              <% } else { %>
+                Link your account to see upcoming appointments.
+              <% } %>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end content-grid -->
+
+</main>
+
+<script>
+  // ── Date navigation ──
+  var datePicker = document.getElementById('datePicker');
+  datePicker.addEventListener('change', function() {
+    window.location.href = '/doctor?date=' + this.value;
+  });
+
+  document.getElementById('prevDay').addEventListener('click', function() {
+    var d = new Date(datePicker.value + 'T12:00:00');
+    d.setDate(d.getDate() - 1);
+    window.location.href = '/doctor?date=' + d.toISOString().split('T')[0];
+  });
+
+  document.getElementById('nextDay').addEventListener('click', function() {
+    var d = new Date(datePicker.value + 'T12:00:00');
+    d.setDate(d.getDate() + 1);
+    window.location.href = '/doctor?date=' + d.toISOString().split('T')[0];
+  });
+
+  document.getElementById('todayBtn').addEventListener('click', function() {
+    window.location.href = '/doctor';
+  });
+
+  // ── Animate stat cards on load ──
+  document.querySelectorAll('.stat-card').forEach(function(card, i) {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(12px)';
+    card.style.transition = 'opacity 0.3s ease ' + (i * 70) + 'ms, transform 0.3s ease ' + (i * 70) + 'ms';
+    requestAnimationFrame(function() { card.style.opacity = '1'; card.style.transform = 'translateY(0)'; });
+  });
+</script>
+
+</body>
+</html>
