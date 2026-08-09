@@ -1,9 +1,13 @@
+if(process.env.NODE_ENV !="production"){
+    require('dotenv').config()
+}
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
 const ejsmate = require("ejs-mate");
 const path = require("path");
 const session = require("express-session");
+const Store=session.Store;
 const passport = require("passport");
 const User = require("./modules/user");
 const Doctor = require("./modules/doctor");
@@ -21,6 +25,15 @@ app.engine("ejs", ejsmate);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "public")));
+const sessionSchema=new mongoose.Schema({
+  _id:String,
+  session:Object,
+  expires:Date,
+});
+const Session= mongoose.model("Session",sessionSchema);
+
+sessionSchema.index({expires:1},{expireAfterSeconds:0});
+const dbURL=process.env.ATLAS_URL;
 
 // ── MongoDB ────────────────────────────────────────────────
 main()
@@ -28,20 +41,91 @@ main()
   .catch((err) => console.log(`MongoDB error: ${err}`));
 
 async function main() {
-  await mongoose.connect("mongodb://127.0.0.1:27017/mediflow");
+  await mongoose.connect(dbURL,{
+    useNewUrlParser: true,
+  useUnifiedTopology: true,
+  }).then(()=>console.log("Mongostore connect")).catch((err)=>console.log("Mongostore err:",err));
 }
 
 // ── Session & Passport ────────────────────────────────────
-const sessionOptions = {
-  secret: "sdfdf",
-  resave: false,
-  saveUninitialized: true,
+class MongooseStore extends Store {
+  constructor(options={}) {
+    super();
+    this.ttl = options.ttl || 30 * 24 * 60 * 60;
+  }
+
+  async get(sid, callback) {
+    try {
+      const doc = await Session.findById(sid);
+      callback(null, doc ? doc.session : null);
+    } catch (err) {
+      callback(err);
+    }
+  }
+
+  async set(sid, sessionData, callback) {
+    try {
+      await Session.findByIdAndUpdate(
+        sid,
+        { session: sessionData, expires: sessionData.cookie?.expires },
+        { upsert: true }
+      );
+      callback(null);
+    } catch (err) {
+      callback(err);
+    }
+  }
+
+  async destroy(sid, callback) {
+    try {
+      await Session.findByIdAndDelete(sid);
+      callback(null);
+    } catch (err) {
+      callback(err);
+    }
+  }
+
+    async touch(sid, sessionData, callback) {
+    try {
+      const expires =
+        sessionData.cookie?.expires ||
+        new Date(Date.now() + this.ttl * 1000);
+
+      await Session.findByIdAndUpdate(
+        sid,
+        { expires },
+        { new: false }
+      );
+
+      callback(null);
+    } catch (err) {
+      callback(err);
+    }
+  }
+
 };
 
+
+//Session Passport & Falsh Message middleware
+const sessionOptions={
+  secret:process.env.SECRET,
+  resave:false,
+  saveUninitialized:false,
+  store:new MongooseStore({ttl:30*24*60*60}),
+  cookie:{
+    expires:Date.now()+7*24*60*60*1000,
+    maxAge:30*24*60*60*1000,
+    httpOnly:true,
+  }
+}
+
 app.use(session(sessionOptions));
+app.use(flash());
+
 app.use(passport.initialize());
 app.use(passport.session());
-app.use(flash());
+
+
 
 // ── Icon helper – available in every EJS template ────────
 app.locals.icon = function(name) {

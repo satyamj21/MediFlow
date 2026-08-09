@@ -1,7 +1,11 @@
+
+if(process.env.NODE_ENV !="production"){
+    require('dotenv').config()
+}
 const mongoose = require("mongoose");
 const Doctor = require("./modules/doctor");
 
-mongoose.connect("mongodb://127.0.0.1:27017/mediflow");
+mongoose.connect(process.env.ATLAS_URL);
 
 const doctors = [
   {
